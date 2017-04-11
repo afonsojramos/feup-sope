@@ -126,6 +126,8 @@ int main(int argc, char *argv[],char *envp[]){
    DIR *dirp;
    pid_t pid;
    int status;
+   char name[500];
+   
 
    if(argc < 2)
    {
@@ -142,14 +144,16 @@ int main(int argc, char *argv[],char *envp[]){
    while((direntp = readdir(dirp)) != NULL)
    {
       
-  
-       // printf("%s\n",pwd);
-       if(lstat(pwd,&buf) == -1)
+         char *pathname = concatenateString(pwd,direntp->d_name);
+        
+      
+       
+       if(lstat(pathname,&buf) == -1)
        {
            perror("lstat ERROR");
            exit(3);
        }
-        char *pathname = concatenateString(pwd,direntp->d_name);
+        
        // printf("%s\n",pathname);
 
       
@@ -163,14 +167,15 @@ int main(int argc, char *argv[],char *envp[]){
                printf("%s\n",pathname);
                if(delete != 0)
                {
+                   printf("vai apagar");
                    
                    //TODO apaga ficheiro
-                  /* if(unlink(pathname) != 0)
+                   if(unlink(pathname) != 0)
                    {
                     
                        perror("Error in deleting directory");
                        exit(5);
-                   }*/
+                   }
                }
            }
        }
@@ -193,25 +198,27 @@ int main(int argc, char *argv[],char *envp[]){
                }
                
            }
-           // else if((pid = fork()) < 0 ) fprintf(stderr,"fork error\n");
-         //  else if (pid == 0)
-         //  {
+            else if((pid = fork()) < 0 ) fprintf(stderr,"fork error\n");
+           else if (pid == 0)
+           {
                //TODO recursivo usando exec
-              /* if( chdir(pathname) != 0)
+               if( chdir(pathname) != 0)
                {
                    perror("chdir ERROR");
                    exit(4);
-               }*/
-              /*if( execve("sfind",argv,envp) == -1)
+               }
+            
+            main(argc,argv,envp);
+             /* if( execve("sfind",argv,envp) == -1)
               {
-                  perror("execve ERROR");
+                  perror("execvp ERROR");
                   exit(6);
               }*/
                
-        //   }else 
-           //{
-             //   wait(&status);
-         //  }
+       }else 
+           {
+                wait(&status);
+          }
        }
        else if(S_ISLNK(buf.st_mode))
        {

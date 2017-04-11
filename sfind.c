@@ -8,12 +8,13 @@
 #include <sys/stat.h>
 #include <signal.h>
 
- int print = 0, delete = 0;
+ int print = 0, delete = 0, execute_command = 0;
  char name_file[25];
  char file_type[2];
  char* perm_type;
 char initial_path[sizeof(char*)];
-int flag = 0;
+char command[25];
+
 
 
  int verifyArgs(int argc, char *argv[]){
@@ -40,12 +41,18 @@ int flag = 0;
             strcpy(perm_type,argv[++i]);
         }
         else if(strcmp(argv[i],"-print")==0){
-                printf("Is to print\n");
+               // printf("Is to print\n");
                 print = 1;
         }
         else if(strcmp(argv[i],"-delete") == 0){
            delete = 1;
-        }else return -1;
+
+        }else if(strcmp(argv[i],"-exec") == 0)
+        {
+            execute_command = 1;
+            strcpy(command,argv[++i]);
+        }
+        else return -1;
     }
     return 0;
     
@@ -102,11 +109,7 @@ int main(int argc, char *argv[]){
        return -1;
    }
    
-   struct sigaction act;
-   act.sa_handler = signalHandler;
-   sigemptyset(&act.sa_mask);
-   act.sa_flags = 0;
-   sigaction(SIGINT,&act,NULL);
+   
    char* pwd =   strcat(initial_path,"/");// getcwd(cwd,size);   //getInitialPath(envp);
    struct stat buf;
    struct dirent *direntp;
@@ -114,7 +117,9 @@ int main(int argc, char *argv[]){
    pid_t pid;
    int status;
    
-  
+   signal(SIGINT,SIG_IGN);
+     
+   
    if(argc < 2)
    {
        fprintf(stderr, "Usage: %s dir_name\n",pwd);
@@ -145,15 +150,24 @@ int main(int argc, char *argv[]){
       
        if(S_ISREG(buf.st_mode))
        {
-           printf("e regular o %s\n",direntp->d_name);
+          // printf("e regular o %s\n",direntp->d_name);
            if(strcmp(file_type,"f") == 0 || strcmp(direntp->d_name,name_file) == 0)
            {
             
+                if(execute_command != 0)
+                {
+                    printf("%s",command);
+                   if( execlp(command,command,pathname,NULL) == -1)
+                   {
+                        perror("error executing program:");
+                       exit(6);
+                   }
+                }
                if(print != 0)
                printf("%s\n",pathname);
                if(delete != 0)
                {
-                   printf("vai apagar");
+                  // printf("vai apagar");
                    
                    //TODO apaga ficheiro
                    if(unlink(pathname) != 0)
@@ -167,10 +181,18 @@ int main(int argc, char *argv[]){
        }
        else if(S_ISDIR(buf.st_mode) && strcmp(direntp->d_name,".") != 0 && strcmp(direntp->d_name,"..") != 0)
        {
-           printf("e diretorio o %s\n", direntp->d_name);
+           //printf("e diretorio o %s\n", direntp->d_name);
            if(strcmp(file_type,"d") == 0 || strcmp(direntp->d_name,name_file) == 0)
            {
-               
+                if(execute_command != 0)
+                {
+                    printf("%s",command);
+                   if( execl(command,command,pathname,NULL) == -1)
+                   {
+                       perror("error executing program:");
+                       exit(6);
+                   }
+                }
                 if(print != 0)
                printf("%s\n",pathname);
                if(delete != 0)
@@ -195,6 +217,7 @@ int main(int argc, char *argv[]){
                }*/
             
            // main(argc,argv,envp);
+           
           
             char **cp_argv ;
             size_t size = sizeof(*cp_argv) * (argc+1);
@@ -208,19 +231,36 @@ int main(int argc, char *argv[]){
                   perror("execvp ERROR");
                   exit(6);
               }
+              signal(SIGINT, SIG_IGN);
         //free(cp_argv);    
                
        }else 
            {
+               
+               //signal(SIGINT, SIG_IGN);
                 wait(&status);
+                struct sigaction act;
+             act.sa_handler = signalHandler;
+            sigemptyset(&act.sa_mask);
+             act.sa_flags = 0;
+             sigaction(SIGINT,&act,NULL);
+                  
           }
        }
        else if(S_ISLNK(buf.st_mode))
        {
-           printf("e link\n");
+         //  printf("e link\n");
            if(strcmp(file_type,"l") == 0 || strcmp(direntp->d_name,name_file ) == 0)
            {
-               
+                if(execute_command != 0)
+                {
+                    printf("%s",command);
+                    if( execlp(command,command,pathname,NULL) == -1)
+                   {
+                        perror("error executing program:");
+                       exit(6);
+                   }
+                }
                if(print != 0)
                 printf("%s\n",pathname);
                 if(delete != 0)
@@ -235,8 +275,10 @@ int main(int argc, char *argv[]){
                 }
            }
        }
+   
+      
    }
-
+   
    closedir(dirp);
 
    

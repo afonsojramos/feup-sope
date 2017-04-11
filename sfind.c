@@ -95,21 +95,131 @@ char* search(struct stat buf)
    }
 }
 
+char* concatenateString(char* str1,char* str2)
+{
+    char* new_str;
+    if((new_str = malloc(strlen(str1)+strlen(str2)+1)) != NULL)
+    {
+        new_str[0] = '\0';
+        strcat(new_str,str1);
+        strcat(new_str,str2);
+    }else
+    {
+        fprintf(STDERR,"malloc failed!\n");
+        exit(-1);
+    }
+    return new_str;
+}
+
 int main(int argc, char *argv[],char *envp[]){
     
    if(verifyArgs(argc,argv) == -1)
    {
        return -1;
    }
-   char* pwd = getInitialPath(envp);
+   char *cwd;
+   size_t size = 200;
+   char* pwd =  getcwd(cwd,size);   //getInitialPath(envp);
    struct stat buf;
+   struct dirent *direntp;
+   DIR *dirp;
+   char *str;
+   char name[200];
+   pid_t pid;
+   int status;
+
+   if(argc < 2)
+   {
+       fprintf(stderr, "Usage: %s dir_name\n",pwd);
+       exit(1);
+   }
+
+   if((dirp = opnedir(pwd)) == NULL)
+   {
+       perror(pwd);
+       exit(2);
+   }
+
+   while((direntp = readdir(dirp)) != NULL)
+   {
+       if(lstat(name,&buf) == -1)
+       {
+           perror("lstat ERROR");
+           exit(3);
+       }
+
+       char *pathname = concatenateStrings(pwd,direntp->d_name);
+       if(S_ISREG(buf.st_mode))
+       {
+           if(file_type == 'f' || direntp->d_name == name_file)
+           {
+               if(print != 0)
+               printf(pathname);
+               if(delete != 0)
+               {
+                   //TODO apaga ficheiro
+                   if(rmdir(pathname) != 0)
+                   {
+                       perror("Error in deleting directory");
+                       exit(5);
+                   }
+               }
+           }
+       }
+       else if(S_ISDIR(buf.st_mode))
+       {
+           if(file_type == 'd' || direntp->d_name == name_file)
+           {
+                if(print != 0)
+               printf(pathname);
+               if(delete != 0)
+               {
+                   //TODO apaga ficheiro
+                   if(rmdir(pathname) != 0)
+                   {
+                       perror("Error in deleting directory");
+                       exit(5);
+                   }
+               }
+           }
+            else if((pid = fork()) < 0 ) fprintf(stderr,"fork error\n");
+           else if (pid == 0)
+           {
+               //TODO recursivo usando exec
+               if( chdir(pathname) != 0)
+               {
+                   perror("chdir ERROR");
+                   exit(4);
+               }
+               execve("./sfind",argv,envp);
+               
+           }else 
+           {
+                wait(&status);
+           }
+       }
+       else if(S_ISLNK(buf.st_mode))
+       {
+           if(file_type == 'l' || direntp->d_name == name_file )
+           {
+               if(print != 0)
+                printf(pathname);
+                if(delete != 0)
+                {
+                     if(rmdir(pathname) != 0)
+                   {
+                       perror("Error in deleting directory");
+                       exit(5);
+                   }
+                }
+           }
+       }
+   }
+
+   closedir(dirp);
+   exit(0);
    
 
    
     return 0;
 }
-
-
-
-
-

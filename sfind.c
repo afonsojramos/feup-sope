@@ -177,7 +177,7 @@ int main(int argc, char *argv[]){
                }
                
            }
-            else if((pid = fork()) < 0 ) fprintf(stderr,"fork error\n");
+        if((pid = fork()) < 0 ) fprintf(stderr,"fork error\n");
            else if (pid == 0)
            {
                //TODO recursivo usando exec

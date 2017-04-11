@@ -8,35 +8,34 @@
 #include <sys/stat.h>
 
  int print = 0, delete = 0;
- char* name_file;
- char file_type;
+ char name_file[25];
+ char file_type[2];
  char* perm_type;
- char initial_path;
+char initial_path[sizeof(char*)];
 
 
  int verifyArgs(int argc, char *argv[]){
     int i = 2;
-    initial_path = *argv[1];
-    if(initial_path == '.' || initial_path == '/' || initial_path == '~')
-    {
-        
+    //initial_path = argv[1];
+    strcpy(initial_path,argv[1]);    
          for(; i < argc; i++)
      {
         if(strcmp(argv[i],"-name") == 0){
             //printf("%s\n",argv[i+1]);
-            name_file = argv[++i];
+            strcpy(name_file,argv[++i]);
         }
         else if(strcmp(argv[i],"-type") == 0){
-            if(*argv[i+1] != 'd' && *argv[i+1] != 'l' && *argv[i+1] != 'f')
+            if(strcmp(argv[i+1],"d") != 0 && strcmp(argv[i+1],"l") != 0 && strcmp(argv[i+1],"f") != 0)
             {
                 return -1;
             
             }   
             else
-            file_type = *argv[++i];
+          //  file_type = *argv[++i];
+          strcpy(file_type,argv[++i]);
         }
         else if(strcmp(argv[i],"-perm") == 0){
-            perm_type = argv[++i];
+            strcpy(perm_type,argv[++i]);
         }
         else if(strcmp(argv[i],"-print")==0){
                 printf("Is to print\n");
@@ -47,7 +46,7 @@
         }else return -1;
     }
     return 0;
-    }else return -1;
+    
    
 }
 
@@ -75,33 +74,15 @@ char* getInitialPath(char *envp[])
     return substring;
 }
 
-/*char* search(struct stat buf)
-{
-    
-    lstat(pwd,&buf);
-    if(S_ISDIR(buf.st_mode))
-   {
-
-    
-    
-   }else if(S_ISREG(buf.st_mode))
-   {
-
-   }else if(S_ISLNK(buf.st_mode))
-   {
-
-   }
-}*/
-
 char* concatenateString(char* str1,char* str2)
 {
     char* new_str;
-    char* str_aux = "/";
-    if((new_str = malloc(strlen(str1)+strlen(str2)+strlen(str_aux)+1)) != NULL)
+    //char* str_aux = "/";
+    if((new_str = malloc(strlen(str1)+strlen(str2)+1)) != NULL)
     {
         new_str[0] = '\0';
         strcat(new_str,str1);
-        strcat(new_str,str_aux);
+        //strcat(new_str,str_aux);
         strcat(new_str,str2);
     }else
     {
@@ -111,22 +92,20 @@ char* concatenateString(char* str1,char* str2)
     return new_str;
 }
 
-int main(int argc, char *argv[],char *envp[]){
+int main(int argc, char *argv[]){
     
    if(verifyArgs(argc,argv) == -1)
    {
        printf("Invalid arguments!\n");
        return -1;
    }
-   char *cwd;
-   size_t size = 256;
-   char* pwd =  getcwd(cwd,size);   //getInitialPath(envp);
+ //  char *cwd;
+   char* pwd =   strcat(initial_path,"/");// getcwd(cwd,size);   //getInitialPath(envp);
    struct stat buf;
    struct dirent *direntp;
    DIR *dirp;
    pid_t pid;
    int status;
-   char name[500];
    
 
    if(argc < 2)
@@ -159,8 +138,8 @@ int main(int argc, char *argv[],char *envp[]){
       
        if(S_ISREG(buf.st_mode))
        {
-           printf("e regular\n");
-           if(file_type == 'f' || strcmp(direntp->d_name,name_file) == 0)
+           printf("e regular o %s\n",direntp->d_name);
+           if(strcmp(file_type,"f") == 0 || strcmp(direntp->d_name,name_file) == 0)
            {
             
                if(print != 0)
@@ -179,10 +158,10 @@ int main(int argc, char *argv[],char *envp[]){
                }
            }
        }
-       else if(S_ISDIR(buf.st_mode))
+       else if(S_ISDIR(buf.st_mode) && strcmp(direntp->d_name,".") != 0 && strcmp(direntp->d_name,"..") != 0)
        {
            printf("e diretorio o %s\n", direntp->d_name);
-           if(file_type == 'd' || strcmp(direntp->d_name,name_file) == 0)
+           if(strcmp(file_type,"d") == 0 || strcmp(direntp->d_name,name_file) == 0)
            {
                
                 if(print != 0)
@@ -190,7 +169,7 @@ int main(int argc, char *argv[],char *envp[]){
                if(delete != 0)
                {
                    //TODO apaga ficheiro
-                   if(unlink(pathname) != 0)
+                   if(rmdir(pathname) != 0)
                    {
                        perror("Error in deleting directory");
                        exit(5);
@@ -202,18 +181,27 @@ int main(int argc, char *argv[],char *envp[]){
            else if (pid == 0)
            {
                //TODO recursivo usando exec
-               if( chdir(pathname) != 0)
+              /* if( chdir(pathname) != 0)
                {
                    perror("chdir ERROR");
                    exit(4);
-               }
+               }*/
             
-            main(argc,argv,envp);
-             /* if( execve("sfind",argv,envp) == -1)
+           // main(argc,argv,envp);
+          
+            char **cp_argv ;
+            size_t size = sizeof(*cp_argv) * (argc+1);
+            cp_argv = malloc(size);
+            memcpy(cp_argv,argv,size);
+            cp_argv[1] = malloc(sizeof(pathname));
+            strcpy(cp_argv[1],pathname);
+          //argv[1] = pathname;
+              if( execv(cp_argv[0],cp_argv) == -1)
               {
                   perror("execvp ERROR");
                   exit(6);
-              }*/
+              }
+        //free(cp_argv);    
                
        }else 
            {
@@ -223,7 +211,7 @@ int main(int argc, char *argv[],char *envp[]){
        else if(S_ISLNK(buf.st_mode))
        {
            printf("e link\n");
-           if(file_type == 'l' || strcmp(direntp->d_name,name_file ) == 0)
+           if(strcmp(file_type,"l") == 0 || strcmp(direntp->d_name,name_file ) == 0)
            {
                
                if(print != 0)

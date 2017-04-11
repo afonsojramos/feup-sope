@@ -77,7 +77,7 @@ char* getInitialPath(char *envp[])
     return substring;
 }
 
-char* search(struct stat buf)
+/*char* search(struct stat buf)
 {
     
     lstat(pwd,&buf);
@@ -93,7 +93,7 @@ char* search(struct stat buf)
    {
 
    }
-}
+}*/
 
 char* concatenateString(char* str1,char* str2)
 {
@@ -105,7 +105,7 @@ char* concatenateString(char* str1,char* str2)
         strcat(new_str,str2);
     }else
     {
-        fprintf(STDERR,"malloc failed!\n");
+        printf("malloc failed!\n");
         exit(-1);
     }
     return new_str;
@@ -135,7 +135,7 @@ int main(int argc, char *argv[],char *envp[]){
        exit(1);
    }
 
-   if((dirp = opnedir(pwd)) == NULL)
+   if((dirp = opendir(pwd)) == NULL)
    {
        perror(pwd);
        exit(2);
@@ -149,7 +149,7 @@ int main(int argc, char *argv[],char *envp[]){
            exit(3);
        }
 
-       char *pathname = concatenateStrings(pwd,direntp->d_name);
+       char *pathname = concatenateString(pwd,direntp->d_name);
        if(S_ISREG(buf.st_mode))
        {
            if(file_type == 'f' || direntp->d_name == name_file)

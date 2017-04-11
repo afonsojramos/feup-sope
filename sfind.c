@@ -123,6 +123,7 @@ int main(int argc, char *argv[],char *envp[]){
    struct stat buf;
    struct dirent *direntp;
    DIR *dirp;
+   DIR *aux_dir;
    char *str;
    char name[200];
    pid_t pid;
@@ -223,3 +224,8 @@ int main(int argc, char *argv[],char *envp[]){
    
     return 0;
 }
+
+
+
+
+

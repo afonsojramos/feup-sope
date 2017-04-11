@@ -10,26 +10,22 @@
  int print = 0, delete = 0;
  char* name_file;
  char file_type;
- int perm_type;
+ char* perm_type;
  char initial_path;
 
 
  int verifyArgs(int argc, char *argv[]){
     int i = 2;
-
     initial_path = *argv[1];
     if(initial_path == '.' || initial_path == '/' || initial_path == '~')
     {
         
          for(; i < argc; i++)
      {
-        if(*argv[i] == "-name"){
-            if(*argv[i+1] == " ")
-                return -1;
-            else 
+        if(strcmp(argv[i],"-name") == 0){
             name_file = argv[++i];
         }
-        else if(*argv[i] == "-type"){
+        else if(strcmp(argv[i],"-type") == 0){
             if(*argv[i+1] != 'd' && *argv[i+1] != 'l' && *argv[i+1] != 'f')
             {
                 return -1;
@@ -38,13 +34,14 @@
             else
             file_type = *argv[++i];
         }
-        else if(*argv[i] == "-perm"){
-            perm_type = *argv[++i];
+        else if(strcmp(argv[i],"-perm") == 0){
+            perm_type = argv[++i];
         }
-        else if(*argv[i] == "-print"){
+        else if(strcmp(argv[i],"-print")==0){
+                printf("Is to print\n");
                 print = 1;
         }
-        else if(*argv[i] == "-delete"){
+        else if(strcmp(argv[i],"-delete") == 0){
            delete = 1;
         }else return -1;
     }
@@ -115,10 +112,11 @@ int main(int argc, char *argv[],char *envp[]){
     
    if(verifyArgs(argc,argv) == -1)
    {
+       printf("Invalid arguments!\n");
        return -1;
    }
    char *cwd;
-   size_t size = 200;
+   size_t size = 256;
    char* pwd =  getcwd(cwd,size);   //getInitialPath(envp);
    struct stat buf;
    struct dirent *direntp;
@@ -143,6 +141,7 @@ int main(int argc, char *argv[],char *envp[]){
 
    while((direntp = readdir(dirp)) != NULL)
    {
+       sprintf(name,"%s/%s",name_file,direntp->d_name);
        if(lstat(name,&buf) == -1)
        {
            perror("lstat ERROR");
@@ -218,7 +217,7 @@ int main(int argc, char *argv[],char *envp[]){
    }
 
    closedir(dirp);
-   exit(0);
+
    
 
    

@@ -6,12 +6,14 @@
 #include <string.h>
 #include <sys/times.h>
 #include <sys/stat.h>
+#include <signal.h>
 
  int print = 0, delete = 0;
  char name_file[25];
  char file_type[2];
  char* perm_type;
 char initial_path[sizeof(char*)];
+int flag = 0;
 
 
  int verifyArgs(int argc, char *argv[]){
@@ -50,28 +52,28 @@ char initial_path[sizeof(char*)];
    
 }
 
-char* getInitialPath(char *envp[])
+void signalHandler(int signo)
 {
-    char user[4];
- strcpy(user,"PWD");
-   
-  char** env = envp;
-  char* substring;
-	
-	for(env = envp ; *env != 0;env++)
-	{
-		
-		
-		substring =strtok(*env,"=");
-		if(strcmp(user,substring) == 0)
-		{
-			substring= strtok(NULL,"\0");
-			printf("%s\n",substring);
-		}
-		
-		
-	}
-    return substring;
+    
+    printf("Do you want to quit? y/n : ");
+    char answer[2];
+    fgets(answer,2,stdin);
+    if(strcmp(answer,"y") == 0 || strcmp(answer,"Y") == 0) 
+    {
+
+           exit(0);
+    }
+     
+    else if(strcmp(answer,"n") == 0 || strcmp(answer,"N") == 0) {
+       
+        return;
+    }
+
+    else 
+    {   
+        perror("Invalid answer");
+        exit(-1);
+    }
 }
 
 char* concatenateString(char* str1,char* str2)
@@ -99,7 +101,12 @@ int main(int argc, char *argv[]){
        printf("Invalid arguments!\n");
        return -1;
    }
- //  char *cwd;
+   
+   struct sigaction act;
+   act.sa_handler = signalHandler;
+   sigemptyset(&act.sa_mask);
+   act.sa_flags = 0;
+   sigaction(SIGINT,&act,NULL);
    char* pwd =   strcat(initial_path,"/");// getcwd(cwd,size);   //getInitialPath(envp);
    struct stat buf;
    struct dirent *direntp;
@@ -107,7 +114,7 @@ int main(int argc, char *argv[]){
    pid_t pid;
    int status;
    
-
+  
    if(argc < 2)
    {
        fprintf(stderr, "Usage: %s dir_name\n",pwd);

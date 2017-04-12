@@ -105,55 +105,56 @@ char *concatenateString(char *str1, char *str2)
     return new_str;
 }
 
-int permCheck(int perm, stat &statRes)
+int permCheck(int perm, struct stat statRes)
 {
-    if (stat(file, &statRes) < 0)
-        return 1;
+   // if (stat(file, &statRes) < 0)
+    //    return 1;
     mode_t bits = statRes.st_mode;
-    if ((statRes & S_IXOTH) == 0)
+    if ((bits & S_IXOTH) == 0)
     {
         //Fazer cenas
     }
-    if ((statRes & S_IWOTH) == 0)
+    if ((bits & S_IWOTH) == 0)
     {
         //Fazer cenas
     }
-    if ((statRes & S_IROTH) == 0)
+    if ((bits & S_IROTH) == 0)
     {
         //Fazer cenas
     }
-    if ((statRes & S_IRWXO) == 0)
+    if ((bits & S_IRWXO) == 0)
     {
         //Fazer cenas
     }
-    if ((statRes & S_IXGRP) == 0)
+    if ((bits & S_IXGRP) == 0)
     {
         //Fazer cenas
     }
-    if ((statRes & S_IWGRP) == 0)
+    if ((bits & S_IWGRP) == 0)
     {
         //Fazer cenas
     }
-    if ((statRes & S_IRGRP) == 0)
+    if ((bits & S_IRGRP) == 0)
     {
         //Fazer cenas
     }
-    if ((statRes & S_IRWXG) == 0)
+    if ((bits & S_IRWXG) == 0)
     {
         //Fazer cenas
     }
-    if ((statRes & S_IWUSR) == 0)
+    if ((bits & S_IWUSR) == 0)
     {
         //Fazer cenas
     }
-    if ((statRes & S_IRUSR) == 0)
+    if ((bits & S_IRUSR) == 0)
     {
         //Fazer cenas
     }
-    if ((statRes & S_IRWXU) == 0)
+    if ((bits & S_IRWXU) == 0)
     {
         //Fazer cenas
     }
+    return 0;
 }
 
 int main(int argc, char *argv[])
@@ -235,7 +236,7 @@ int main(int argc, char *argv[])
                 if (execute_command != 0)
                 {
                     printf("%s", command);
-                    if (execl(command, command, pathname, NULL) == -1)
+                    if (execlp(command, command, pathname, NULL) == -1)
                     {
                         perror("error executing program:");
                         exit(6);

@@ -187,7 +187,7 @@ int main(int argc, char *argv[]){
                 if(execute_command != 0)
                 {
                     printf("%s",command);
-                   if( execl(command,command,pathname,NULL) == -1)
+                   if( execlp(command,command,pathname,NULL) == -1)
                    {
                        perror("error executing program:");
                        exit(6);

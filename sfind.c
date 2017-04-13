@@ -17,6 +17,7 @@ char file_type[2];
 int perm_type;
 char initial_path[sizeof(char *)];
 char command[25];
+ pid_t pid;
 
 int verifyArgs(int argc, char *argv[])
 {
@@ -74,7 +75,7 @@ void signalHandler(int signo)
     fgets(answer, 2, stdin);
     if (strcmp(answer, "y") == 0 || strcmp(answer, "Y") == 0)
     {
-
+        kill(pid,SIGKILL);
         exit(0);
     }
 
@@ -193,11 +194,13 @@ int main(int argc, char *argv[])
     struct stat buf;
     struct dirent *direntp;
     DIR *dirp;
-    pid_t pid;
+    struct sigaction act;
+    act.sa_handler = signalHandler;
+    sigemptyset(&act.sa_mask);
+    act.sa_flags = 0;
+    sigaction(SIGINT, &act, NULL);
     int status;
     perm_type = convertOctaltoDecimal(perm_type);
-
-    signal(SIGINT, SIG_IGN);
 
     if (argc < 2)
     {
@@ -293,18 +296,14 @@ int main(int argc, char *argv[])
                     perror("execvp ERROR");
                     exit(6);
                 }
-                signal(SIGINT, SIG_IGN);
+
                 free(cp_argv);
             }
             else
             {
 
                 wait(&status);
-                struct sigaction act;
-                act.sa_handler = signalHandler;
-                sigemptyset(&act.sa_mask);
-                act.sa_flags = 0;
-                sigaction(SIGINT, &act, NULL);
+                
             }
         }
         else if (S_ISLNK(buf.st_mode))

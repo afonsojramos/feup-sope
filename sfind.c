@@ -1,5 +1,7 @@
 #include <stdio.h>
+#include <math.h>
 #include <sys/types.h>
+#include <wait.h>
 #include <dirent.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -8,10 +10,11 @@
 #include <sys/stat.h>
 #include <signal.h>
 
+
 int print = 0, delete = 0, execute_command = 0;
 char name_file[25];
 char file_type[2];
-char *perm_type;
+int perm_type;
 char initial_path[sizeof(char *)];
 char command[25];
 
@@ -39,7 +42,9 @@ int verifyArgs(int argc, char *argv[])
         }
         else if (strcmp(argv[i], "-perm") == 0)
         {
-            strcpy(perm_type, argv[++i]);
+            char perm[10];
+            strcpy(perm, argv[++i]);
+            perm_type = atoi(perm);
         }
         else if (strcmp(argv[i], "-print") == 0)
         {
@@ -82,8 +87,21 @@ void signalHandler(int signo)
     else
     {
         perror("Invalid answer");
-        exit(-1);
+        signalHandler(SIGINT);
     }
+}
+
+int convertOctaltoDecimal(int octalnumber)
+{
+    int decimalNumber = 0, i = 0;
+
+    while(octalnumber != 0)
+    {
+        decimalNumber += (octalnumber%10)* pow(8,i);  
+        ++i;
+        octalnumber /= 10;
+    }
+    return decimalNumber;
 }
 
 char *concatenateString(char *str1, char *str2)
@@ -103,6 +121,11 @@ char *concatenateString(char *str1, char *str2)
         exit(-1);
     }
     return new_str;
+}
+
+int getPerm(mode_t bits)
+{
+    return (bits & S_IRUSR) | (bits & S_IWUSR) | (bits & S_IXUSR) | (bits & S_IRGRP) | (bits & S_IWGRP) | (bits & S_IXGRP) | (bits &  S_IROTH) | (bits & S_IWOTH) | (bits & S_IXOTH);
 }
 
 int permCheck(int perm, struct stat statRes)
@@ -166,12 +189,13 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    char *pwd = strcat(initial_path, "/"); // getcwd(cwd,size);   //getInitialPath(envp);
+    char *pwd = strcat(initial_path, "/"); 
     struct stat buf;
     struct dirent *direntp;
     DIR *dirp;
     pid_t pid;
     int status;
+    perm_type = convertOctaltoDecimal(perm_type);
 
     signal(SIGINT, SIG_IGN);
 
@@ -198,12 +222,12 @@ int main(int argc, char *argv[])
             exit(3);
         }
 
-        // printf("%s\n",pathname);
+        
 
         if (S_ISREG(buf.st_mode))
         {
-            // printf("e regular o %s\n",direntp->d_name);
-            if (strcmp(file_type, "f") == 0 || strcmp(direntp->d_name, name_file) == 0)
+           
+            if (strcmp(file_type, "f") == 0 || strcmp(direntp->d_name, name_file) == 0 || perm_type == getPerm(buf.st_mode))
             {
 
                 if (execute_command != 0)
@@ -228,10 +252,10 @@ int main(int argc, char *argv[])
                 }
             }
         }
-        else if (S_ISDIR(buf.st_mode) && strcmp(direntp->d_name, ".") != 0 && strcmp(direntp->d_name, "..") != 0)
+        else if (S_ISDIR(buf.st_mode) && strcmp(direntp->d_name, ".") != 0 && strcmp(direntp->d_name, "..") != 0 )
         {
-            //printf("e diretorio o %s\n", direntp->d_name);
-            if (strcmp(file_type, "d") == 0 || strcmp(direntp->d_name, name_file) == 0)
+            
+            if (strcmp(file_type, "d") == 0 || strcmp(direntp->d_name, name_file) == 0 || perm_type == getPerm(buf.st_mode))
             {
                 if (execute_command != 0)
                 {
@@ -246,7 +270,7 @@ int main(int argc, char *argv[])
                     printf("%s\n", pathname);
                 if (delete != 0)
                 {
-                    //TODO apaga ficheiro
+    
                     if (rmdir(pathname) != 0)
                     {
                         perror("Error in deleting directory");
@@ -258,34 +282,23 @@ int main(int argc, char *argv[])
                 fprintf(stderr, "fork error\n");
             else if (pid == 0)
             {
-                //TODO recursivo usando exec
-                /* if( chdir(pathname) != 0)
-               {
-                   perror("chdir ERROR");
-                   exit(4);
-               }*/
-
-                // main(argc,argv,envp);
-
                 char **cp_argv;
                 size_t size = sizeof(*cp_argv) * (argc + 1);
                 cp_argv = malloc(size);
                 memcpy(cp_argv, argv, size);
                 cp_argv[1] = malloc(sizeof(pathname));
                 strcpy(cp_argv[1], pathname);
-                //argv[1] = pathname;
                 if (execv(cp_argv[0], cp_argv) == -1)
                 {
                     perror("execvp ERROR");
                     exit(6);
                 }
                 signal(SIGINT, SIG_IGN);
-                //free(cp_argv);
+                free(cp_argv);
             }
             else
             {
 
-                //signal(SIGINT, SIG_IGN);
                 wait(&status);
                 struct sigaction act;
                 act.sa_handler = signalHandler;
@@ -296,8 +309,7 @@ int main(int argc, char *argv[])
         }
         else if (S_ISLNK(buf.st_mode))
         {
-            //  printf("e link\n");
-            if (strcmp(file_type, "l") == 0 || strcmp(direntp->d_name, name_file) == 0)
+            if (strcmp(file_type, "l") == 0 || strcmp(direntp->d_name, name_file) == 0 || perm_type == getPerm(buf.st_mode))
             {
                 if (execute_command != 0)
                 {

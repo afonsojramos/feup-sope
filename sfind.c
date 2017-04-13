@@ -285,6 +285,7 @@ int main(int argc, char *argv[])
                 fprintf(stderr, "fork error\n");
             else if (pid == 0)
             {
+                signal(SIGINT,SIG_IGN);
                 char **cp_argv;
                 size_t size = sizeof(*cp_argv) * (argc + 1);
                 cp_argv = malloc(size);
@@ -303,6 +304,7 @@ int main(int argc, char *argv[])
             {
 
                 wait(&status);
+                
                 
             }
         }

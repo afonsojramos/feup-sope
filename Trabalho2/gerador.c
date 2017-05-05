@@ -17,6 +17,12 @@
 
 int n_pedidos;
 int max_utilizacao;
+int fd;
+int p;
+char g;
+int t;
+int messagelen;
+char message[100];
 
 int checkParameters(int argc,char *argv[])
 {
@@ -31,8 +37,8 @@ int createFifoEntrance()
 {
     if(mkfifo("/tmp/entrada",0660) < 0)
     {
-             if (errno == EEXIST){
-        printf("FIFO 'tmp/entrada' already exists\n!");
+        if (errno == EEXIST){
+          printf("FIFO 'tmp/entrada' already exists\n!");
         return -1;
     } else
     {
@@ -40,8 +46,17 @@ int createFifoEntrance()
         return -1;
     }
     }else return 0;
+    do {
+      fd=open("/tmp/entrada",O_WRONLY);
+      if (fd==-1) sleep(1);
+    } while (fd==-1);
 
+    //sprintf(message,"Serial Number: %d\nGender: %c\nRequested Duration: %d", p, g, t);
 
+    messagelen=strlen(message)+1;
+    write(fd,message,messagelen);
+
+    close(fd);
 }
 
 void *generate_tickets(void *arg)
@@ -95,7 +110,7 @@ int main(int argc,char *argv[])
         return -1;
     if(fd = open("/tmp/entrada",O_WRONLY)) == -1)
     {
-        printf("Error opening FIFO\n");
+        printf("Erro opening FIFO\n");
         return -1;
     }
 

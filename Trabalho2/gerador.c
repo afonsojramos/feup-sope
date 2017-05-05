@@ -28,8 +28,10 @@ int checkParameters(int argc,char *argv[])
 {
     if(argc != 3)
         return -1;
-    n_pedidos = argv[1];
-    max_utilizacao = argv[2];
+    char ped[MAX_MSG_LEN];
+     strcpy(ped,argv[1]);
+     n_pedidos = atoi(ped);
+    max_utilizacao = atoi(argv[2]);
     return 0;
 }
 
@@ -58,6 +60,13 @@ int createFifoEntrance()
 
     close(fd);
 }
+char* concatStrings(const char *s1,const char *s2)
+{
+    char* result = malloc(strlen(s1)+strlen(s2)+1); //+1 for the \0 terminator
+    strcpy(result,s1);
+    strcat(result,s2);
+    return result;
+}
 
 void *generate_tickets(void *arg)
 {
@@ -69,7 +78,7 @@ void *generate_tickets(void *arg)
     char timestr[MAX_MSG_LEN]; 
     int timet = rand() % max_utilizacao + 1;
     char selected_sex = sexes[rand() %2];
-    char sex;
+    char sex[2];
     sprintf(pedido,"%d",pedido_id);
     sprintf(sex,"%c\0",selected_sex);
     sprintf(timestr,"%d",timet);
@@ -83,17 +92,11 @@ void *generate_tickets(void *arg)
     return ret;
 }
 
-char* concatStrings(const char *s1,const char *s2)
-{
-    char* result = malloc(strlen(s1)+strlen(s2)+1); //+1 for the \0 terminator
-    strcpy(result,s1);
-    strcat(result,s2);
-    return result;
-}
+
 
 int main(int argc,char *argv[])
 {
-    int fd,n;
+    int fd;
     char str[MAX_MSG_LEN];
     srand(time(NULL));
     pthread_t t_randomTickets, t_readResponse;
@@ -103,15 +106,16 @@ int main(int argc,char *argv[])
     if(pthread_join(t_randomTickets,(void**)&requests) != 0)
         return -2;
     if(checkParameters(argc, argv) != 0){
-      printf("The parameters are wrong.\n", );
+      printf("The parameters are wrong.\n");
     }
 
     if(createFifoEntrance() != 0)
         return -1;
-    if(fd = open("/tmp/entrada",O_WRONLY)) == -1)
+    fd = open("/tmp/entrada",O_WRONLY);
+    if( fd== -1)
     {
         printf("Erro opening FIFO\n");
         return -1;
     }
-
+    return 0;
 }

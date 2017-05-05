@@ -7,6 +7,9 @@
 #include <signal.h>
 #include <errno.h>
 #include <string.h>
+#include <pthread.h>
+#include <time.h>
+
 
 #define MAX_MSG_LEN 1000
 #define READ 0
@@ -15,7 +18,7 @@
 int n_pedidos;
 int max_utilizacao;
 
-int checkParameters(int argc,char[] *argv)
+int checkParameters(int argc,char *argv[])
 {
     if(argc != 3)
         return -1;
@@ -41,12 +44,49 @@ int createFifoEntrance()
 
 }
 
+void *generate_tickets(void *arg)
+{
+    int pedido_id = 1;
+    char sexes[] = {'M','F'};
+    char* ret;
+    do{
+    char pedido[MAX_MSG_LEN];
+    char timestr[MAX_MSG_LEN]; 
+    int timet = rand() % max_utilizacao + 1;
+    char selected_sex = sexes[rand() %2];
+    char sex;
+    sprintf(pedido,"%d",pedido_id);
+    sprintf(sex,"%c\0",selected_sex);
+    sprintf(timestr,"%d",timet);
+    strcat(pedido," ");
+    strcat(sex," ");
+    strcat(timestr,"\n");
+    ret = concatStrings(pedido,sex);
+    ret = concatStrings(ret,timestr);
+    pedido_id++; 
+    }while(pedido_id != n_pedidos);
+    return ret;
+}
 
-int main(int argc,char[] *argv)
+char* concatStrings(const char *s1,const char *s2)
+{
+    char* result = malloc(strlen(s1)+strlen(s2)+1); //+1 for the \0 terminator
+    strcpy(result,s1);
+    strcat(result,s2);
+    return result;
+}
+
+int main(int argc,char *argv[])
 {
     int fd,n;
     char str[MAX_MSG_LEN];
+    srand(time(NULL));
+    pthread_t t_randomTickets, t_readResponse;
 
+    pthread_create(&t_randomTickets,NULL,generate_tickets,NULL);
+    char *requests;
+    if(pthread_join(t_randomTickets,(void**)&requests) != 0)
+        return -2;
     if(checkParameters(argc, argv) != 0){
       printf("The parameters are wrong.\n", );
     }

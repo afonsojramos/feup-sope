@@ -14,6 +14,8 @@
 
 int n_lugares;
 int readline(int fd, char *str);
+char *GENERATE_FIFO = "/tmp/entrada";
+char *REJECTED_FIFO = "/tmp/rejeitados";
 
 int checkParameters(int argc, char *argv[])
 {
@@ -21,12 +23,11 @@ int checkParameters(int argc, char *argv[])
     if (argc != 2)
         return -1;
     n_lugares = atoi(argv[1]);
-    return 0;
 }
+
 
 int readline(int fd, char *str)
 {
-
     int n;
     char gender;
 
@@ -38,6 +39,7 @@ int readline(int fd, char *str)
     return (n > 0);
 }
 
+<
 int main(int argc, char *argv[])
 {
 
@@ -64,7 +66,7 @@ int main(int argc, char *argv[])
         }
     }
 
-    if (mkfifo("/tmp/entrada", 0666) < 0)
+    if (mkfifo(GENERATE_FIFO, 0666) < 0)
     {
         if (errno == EEXIST)
         {
@@ -80,7 +82,7 @@ int main(int argc, char *argv[])
 
    
    
-   if((fifo_entrada = open("/tmp/entrada", O_RDONLY)) == -1)
+   if((fifo_entrada = open(GENERATE_FIFO, O_RDONLY)) == -1)
    {
          printf("Error opening FIFO\n");
         return -1;

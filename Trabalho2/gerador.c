@@ -26,6 +26,8 @@ char message[100];
 char *concatStrings(const char *s1, const char *s2);
 int checkParameters(int argc, char *argv[]);
 void *generate_tickets(void *arg);
+char *GENERATOR_FIFO = "/tmp/entrada";
+char *REJECTED_FIFO = "/tmp/rejeitados";
 
 int checkParameters(int argc, char *argv[])
 {
@@ -40,7 +42,6 @@ int checkParameters(int argc, char *argv[])
 
 char *concatStrings(const char *str1, const char *str2)
 {
-
     char *new_str;
     if ((new_str = malloc(strlen(str1) + strlen(str2) + 1)) != NULL)
     {
@@ -57,6 +58,7 @@ char *concatStrings(const char *str1, const char *str2)
     }
     return new_str;
 }
+
 
 void *generate_tickets(void *arg)
 {
@@ -78,9 +80,24 @@ void *generate_tickets(void *arg)
     return ret;
 }
 
+
 int main(int argc, char *argv[])
 {
+    if (checkParameters(argc, argv) != 0)
+    {
+        printf("Wrong number of arguments. Recomended usage: program_name <number of requests> <max duration>\n");
+    }
+
+    //If pipe already exists
+    if (mkfifo(GENERATE_FIFO, S_IRUSR | S_IWUSR) != 0 && errno != EEXIST)
+    {
+        perror("Error creating GENERATOR FIFO");
+        exit(-1);
+    }
+
     int fd;
+    int requests_nr = atoi(argv[1]);
+    int maxDuration = atoi(argv[2]);
     char str[MAX_MSG_LEN];
     srand(time(NULL));
     pthread_t t_randomTickets, t_readResponse;
@@ -94,7 +111,7 @@ int main(int argc, char *argv[])
     printf("tempo %d\n", max_utilizacao);
 
     // cria FIFO entrada de request para a sauna
-    if (mkfifo("/tmp/entrada", 0666) < 0)
+    if (mkfifo(GENERATOR_FIFO, 0666) < 0)
     {
         if (errno == EEXIST)
         {

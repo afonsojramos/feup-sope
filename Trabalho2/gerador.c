@@ -70,7 +70,7 @@ void *generate_tickets(void *arg)
 
     char selected_sex = sexes[rand() % 2];
     char sex[2];
-    sprintf(sex, "%c\0", selected_sex);
+    sprintf(sex, "%c", selected_sex);
 
     sprintf(timestr, "%d", timet);
     strcat(sex, " ");
@@ -89,7 +89,7 @@ int main(int argc, char *argv[])
     }
 
     //If pipe already exists
-    if (mkfifo(GENERATE_FIFO, S_IRUSR | S_IWUSR) != 0 && errno != EEXIST)
+    if (mkfifo(GENERATOR_FIFO, S_IRUSR | S_IWUSR) != 0 && errno != EEXIST)
     {
         perror("Error creating GENERATOR FIFO");
         exit(-1);
@@ -125,8 +125,7 @@ int main(int argc, char *argv[])
     }
 
     //abre o FIFO criado no modo de leitura
-
-   if ((fd = open("/tmp/entrada", O_WRONLY)) == -1)
+   if ((fd = open(GENERATOR_FIFO, O_WRONLY)) == -1)
     {
         return -1;
     }

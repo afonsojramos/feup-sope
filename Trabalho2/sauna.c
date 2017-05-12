@@ -23,6 +23,7 @@ int checkParameters(int argc, char *argv[])
     if (argc != 2)
         return -1;
     n_lugares = atoi(argv[1]);
+    return 0;
 }
 
 
@@ -39,7 +40,6 @@ int readline(int fd, char *str)
     return (n > 0);
 }
 
-<
 int main(int argc, char *argv[])
 {
 
@@ -48,7 +48,7 @@ int main(int argc, char *argv[])
 
     if (checkParameters(argc, argv) != 0)
     {
-        printf("The parameters are wrong.\n");
+        printf("The parameters are wrong on sauna.\n");
         return -1;
     }
 

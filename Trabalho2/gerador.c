@@ -88,25 +88,15 @@ int main(int argc, char *argv[])
         printf("Wrong number of arguments. Recomended usage: program_name <number of requests> <max duration>\n");
     }
 
-    //If pipe already exists
-    if (mkfifo(GENERATOR_FIFO, S_IRUSR | S_IWUSR) != 0 && errno != EEXIST)
-    {
-        perror("Error creating GENERATOR FIFO");
-        exit(-1);
-    }
-
     int fd;
-    int requests_nr = atoi(argv[1]);
-    int maxDuration = atoi(argv[2]);
+    int rejeitados_fifo;
+    //int requests_nr = atoi(argv[1]);
+    //int maxDuration = atoi(argv[2]);
     char str[MAX_MSG_LEN];
     srand(time(NULL));
     pthread_t t_randomTickets, t_readResponse;
     int ticket_id = 1;
     char *requests;
-    if (checkParameters(argc, argv) != 0)
-    {
-        printf("The parameters are wrong.\n");
-    }
     printf("numero pedidos %d\n", n_pedidos);
     printf("tempo %d\n", max_utilizacao);
 
@@ -115,7 +105,20 @@ int main(int argc, char *argv[])
     {
         if (errno == EEXIST)
         {
-           // printf("FIFO '/tmp/entrada' already exists\n!");
+           printf("FIFO '/tmp/entrada' already exists!\n");
+        }
+        else
+        {
+            printf("Can't create FIFO\n");
+            return -1;
+        }
+    }
+
+    if (mkfifo(REJECTED_FIFO, 0666) < 0)
+    {
+        if (errno == EEXIST)
+        {
+           printf("FIFO '/tmp/rejeitados' already exists!\n");
         }
         else
         {
@@ -126,6 +129,11 @@ int main(int argc, char *argv[])
 
     //abre o FIFO criado no modo de leitura
    if ((fd = open(GENERATOR_FIFO, O_WRONLY)) == -1)
+    {
+        return -1;
+    }
+
+     if ((rejeitados_fifo = open(REJECTED_FIFO, O_RDONLY)) == -1)
     {
         return -1;
     }
@@ -141,11 +149,13 @@ int main(int argc, char *argv[])
 
         strcat(ticket, requests);
         write(fd, ticket, MAX_MSG_LEN);
-        //printf("ticket: %s\n", ticket);
+      // char new_str[MAX_MSG_LEN];
+       //read(rejeitados_fifo,new_str,MAX_MSG_LEN);
         ticket_id++;
 
     } while (ticket_id <= n_pedidos);
 
+    close(rejeitados_fifo);
     close(fd);
     if (unlink("/tmp/entrada") < 0)
         printf("Error when destroying FIFO /tmp/entrada\n");

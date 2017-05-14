@@ -98,8 +98,8 @@ void *stay_in_sauna(void *arg)
     pthread_mutex_unlock(&mutex);
     gettimeofday(&end, NULL);
     double delta_us = (end.tv_sec - start.tv_sec) * 1000.0f + (end.tv_usec - start.tv_usec) / 1000.0f;
-    printf("%6.2f - %4d - %20lu - %5d: %c - %5d - SERVED\n", delta_us, getpid(), (long)pthread_self(), request->n_pedido, request->sex, request->time_to_spend);
-    fprintf(sauna_ficheiro, "%6.2f - %4d - %20lu - %5d: %c - %5d - SERVED\n", delta_us, getpid(), (long)pthread_self(), request->n_pedido, request->sex, request->time_to_spend);
+    printf("%8.2f - %4d - %20lu - %5d: %c - %5d - SERVED\n", delta_us, getpid(), (long)pthread_self(), request->n_pedido, request->sex, request->time_to_spend);
+    fprintf(sauna_ficheiro, "%8.2f - %4d - %20lu - %5d: %c - %5d - SERVED\n", delta_us, getpid(), (long)pthread_self(), request->n_pedido, request->sex, request->time_to_spend);
     updatestats(request->sex, 2);
     sem_post(&sem);
 
@@ -180,8 +180,8 @@ int main(int argc, char *argv[])
 
         gettimeofday(&end, NULL);
         double delta_us = (end.tv_sec - start.tv_sec) * 1000.0f + (end.tv_usec - start.tv_usec) / 1000.0f;
-        printf("%6.2f - %4d - %20d - %5d: %c - %5d - RECEIVED\n", delta_us, pid, pid, ticket->n_pedido, ticket->sex, ticket->time_to_spend);
-        fprintf(sauna_ficheiro, "%6.2f - %4d - %20d - %5d: %c - %5d - RECEIVED\n", delta_us, pid, pid, ticket->n_pedido, ticket->sex, ticket->time_to_spend);
+        printf("%8.2f - %4d - %20d - %5d: %c - %5d - RECEIVED\n", delta_us, pid, pid, ticket->n_pedido, ticket->sex, ticket->time_to_spend);
+        fprintf(sauna_ficheiro, "%8.2f - %4d - %20d - %5d: %c - %5d - RECEIVED\n", delta_us, pid, pid, ticket->n_pedido, ticket->sex, ticket->time_to_spend);
         updatestats(ticket->sex, 0);
 
         if (main_sex == 'S')
@@ -224,8 +224,8 @@ int main(int argc, char *argv[])
                 ticket->rejected++;
                 gettimeofday(&end, NULL);
                 double delta_us = (end.tv_sec - start.tv_sec) * 1000.0f + (end.tv_usec - start.tv_usec) / 1000.0f;
-                printf("%6.2f - %4d - %20d - %5d: %c - %5d - REJECTED\n", delta_us, pid, pid, ticket->n_pedido, ticket->sex, ticket->time_to_spend);
-                fprintf(sauna_ficheiro, "%6.2f - %4d - %20d - %5d: %c - %5d - RECEIVED\n", delta_us, pid, pid, ticket->n_pedido, ticket->sex, ticket->time_to_spend);
+                printf("%8.2f - %4d - %20d - %5d: %c - %5d - REJECTED\n", delta_us, pid, pid, ticket->n_pedido, ticket->sex, ticket->time_to_spend);
+                fprintf(sauna_ficheiro, "%8.2f - %4d - %20d - %5d: %c - %5d - RECEIVED\n", delta_us, pid, pid, ticket->n_pedido, ticket->sex, ticket->time_to_spend);
                 updatestats(ticket->sex, 1);
                 if (ticket->rejected <= 3)
                 {

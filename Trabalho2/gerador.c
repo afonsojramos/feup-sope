@@ -123,8 +123,8 @@ void *generate_tickets(void *arg)
     write(descriptor->fifo_entrada, ticket, sizeof(*ticket));
     gettimeofday(&end, NULL);
     double delta_us = (end.tv_sec - start.tv_sec) * 1000.0f + (end.tv_usec - start.tv_usec) / 1000.0f;
-    fprintf(gerador_ficheiro, "%6.2f - %4d - %5d: %c - %5d - REQUEST\n", delta_us, getpid(), ticket->n_pedido, ticket->sex, ticket->time_to_spend);
-    printf("%6.2f - %4d - %5d: %c - %5d - REQUEST\n", delta_us, getpid(), ticket->n_pedido, ticket->sex, ticket->time_to_spend);
+    fprintf(gerador_ficheiro, "%8.2f - %4d - %5d: %c - %5d - REQUEST\n", delta_us, getpid(), ticket->n_pedido, ticket->sex, ticket->time_to_spend);
+    printf("%8.2f - %4d - %5d: %c - %5d - REQUEST\n", delta_us, getpid(), ticket->n_pedido, ticket->sex, ticket->time_to_spend);
     updatestats(ticket->sex, 0);
     pthread_exit(NULL);
     return NULL;
@@ -144,8 +144,8 @@ void *response_ticket(void *arg)
             break;
         gettimeofday(&end, NULL);
         double delta_us = (end.tv_sec - start.tv_sec) * 1000.0f + (end.tv_usec - start.tv_usec) / 1000.0f;
-        fprintf(gerador_ficheiro, "%6.2f - %4d - %5d: %c - %5d - REJECTED\n", delta_us, getpid(), ticket->n_pedido, ticket->sex, ticket->time_to_spend);
-        printf("%6.2f - %4d - %5d: %c - %5d - REJECTED\n", delta_us, getpid(), ticket->n_pedido, ticket->sex, ticket->time_to_spend);
+        fprintf(gerador_ficheiro, "%8.2f - %4d - %5d: %c - %5d - REJECTED\n", delta_us, getpid(), ticket->n_pedido, ticket->sex, ticket->time_to_spend);
+        printf("%8.2f - %4d - %5d: %c - %5d - REJECTED\n", delta_us, getpid(), ticket->n_pedido, ticket->sex, ticket->time_to_spend);
         updatestats(ticket->sex, 1);
 
         if (ticket->rejected <= 3)
@@ -153,16 +153,16 @@ void *response_ticket(void *arg)
             write(descriptor->fifo_entrada, ticket, sizeof(pedido));
             gettimeofday(&end, NULL);
             double delta_us = (end.tv_sec - start.tv_sec) * 1000.0f + (end.tv_usec - start.tv_usec) / 1000.0f;
-            fprintf(gerador_ficheiro, "%6.2f - %4d - %5d: %c - %5d - REQUESTED\n", delta_us, getpid(), ticket->n_pedido, ticket->sex, ticket->time_to_spend);
-            printf("%6.2f - %4d - %5d: %c - %5d - REQUESTED\n", delta_us, getpid(), ticket->n_pedido, ticket->sex, ticket->time_to_spend);
+            fprintf(gerador_ficheiro, "%8.2f - %4d - %5d: %c - %5d - REQUESTED\n", delta_us, getpid(), ticket->n_pedido, ticket->sex, ticket->time_to_spend);
+            printf("%8.2f - %4d - %5d: %c - %5d - REQUESTED\n", delta_us, getpid(), ticket->n_pedido, ticket->sex, ticket->time_to_spend);
             updatestats(ticket->sex, 0);
         }
         else
         {
             gettimeofday(&end, NULL);
             double delta_us = (end.tv_sec - start.tv_sec) * 1000.0f + (end.tv_usec - start.tv_usec) / 1000.0f;
-            fprintf(gerador_ficheiro, "%6.2f - %4d - %5d: %c - %5d - DISCARDED\n", delta_us, getpid(), ticket->n_pedido, ticket->sex, ticket->time_to_spend);
-            printf("%6.2f - %4d - %5d: %c - %5d - DISCARDED\n", delta_us, getpid(), ticket->n_pedido, ticket->sex, ticket->time_to_spend);
+            fprintf(gerador_ficheiro, "%8.2f - %4d - %5d: %c - %5d - DISCARDED\n", delta_us, getpid(), ticket->n_pedido, ticket->sex, ticket->time_to_spend);
+            printf("%8.2f - %4d - %5d: %c - %5d - DISCARDED\n", delta_us, getpid(), ticket->n_pedido, ticket->sex, ticket->time_to_spend);
             updatestats(ticket->sex, 2);
         }
     } while (n > 0);
@@ -171,7 +171,9 @@ void *response_ticket(void *arg)
 
 int main(int argc, char *argv[])
 {
+    srand(time(NULL));
     gettimeofday(&start, NULL);
+    
     if (checkParameters(argc, argv) != 0)
     {
         printf("Wrong number of arguments. Recomended usage: gerador <number of requests> <max duration>\n");
@@ -181,7 +183,7 @@ int main(int argc, char *argv[])
     int fd;
     int rejeitados_fifo;
 
-    srand(time(NULL));
+    
     descriptors *descritores = malloc(sizeof(descriptors));
     pthread_t t_randomTickets, t_readResponse;
     printf("Number of Requests %d\n", n_pedidos);

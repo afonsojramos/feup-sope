@@ -20,7 +20,7 @@ int n_lugares;
 int n_le;
 int lugares_vagos;
 char main_sex = 'S';
-pthread_t tids[512];
+pthread_t tids[100000];
 int tid_index = 0;
 struct timeval start, end;
 struct stats my_stats;
@@ -199,19 +199,27 @@ int main(int argc, char *argv[])
         }
         else
         {
-            if (main_sex == ticket->sex && lugares_vagos != 0)
+            if (main_sex == ticket->sex)
             {
 
-                if (pthread_create(&entrance, NULL, stay_in_sauna, ticket) != 0)
+                if(lugares_vagos == 0)
                 {
+
+                }else if(lugares_vagos != 0)
+                {
+                     if (pthread_create(&entrance, NULL, stay_in_sauna, ticket) != 0)
+                    {
                     printf("Error creating thread\n");
                     return -1;
+                    }
                 }
+               
                 tids[tid_index] = entrance;
+                tid_index++;
                 //Created Thread
             }
             else
-            {
+            {  
                 ticket->rejected++;
                 gettimeofday(&end, NULL);
                 double delta_us = (end.tv_sec - start.tv_sec) * 1000.0f + (end.tv_usec - start.tv_usec) / 1000.0f;
@@ -247,8 +255,8 @@ int main(int argc, char *argv[])
     int i = 0;
     for (; i <= tid_index; i++)
     {
-        if (pthread_join(tids[i], NULL) != 0)
-            return -2;
+        pthread_join(tids[i], NULL);
+            
     }
 
     printf("\n----------------------[FINAL SAUNA STATISTICS]-----------------------\n");

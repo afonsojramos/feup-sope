@@ -28,6 +28,7 @@ struct timeval start, end;
 struct stats my_stats;
 FILE *sauna_ficheiro;
 sem_t sem;
+int fifo_rejeitado, fifo_entrada;
 
 typedef struct pedido
 {
@@ -111,12 +112,94 @@ float getTime(clock_t t1, clock_t t2)
     return ((float)(t2 - t1) / 1000000.0F) * 1000;
 }
 
+int response_ticket(int pid)
+{
+    do
+    {
+        pedido *ticket = malloc(sizeof(pedido));
+        pthread_t entrance;
+
+        if (read(fifo_entrada, ticket, sizeof(*ticket)) < 0)
+            return -1;
+        n_le--;
+
+        gettimeofday(&end, NULL);
+        double delta_us = (end.tv_sec - start.tv_sec) * 1000.0f + (end.tv_usec - start.tv_usec) / 1000.0f;
+        printf("%8.2f - %4d - %20d - %5d: %c - %5d - RECEIVED\n", delta_us, pid, pid, ticket->n_pedido, ticket->sex, ticket->time_to_spend);
+        fprintf(sauna_ficheiro, "%8.2f - %4d - %20d - %5d: %c - %5d - RECEIVED\n", delta_us, pid, pid, ticket->n_pedido, ticket->sex, ticket->time_to_spend);
+        updatestats(ticket->sex, 0);
+
+        if (main_sex == 'S')
+        {
+            //Entered without sex
+            main_sex = ticket->sex;
+            pthread_mutex_lock(&mutex);
+            lugares_vagos--;
+            pthread_mutex_unlock(&mutex);
+            if (pthread_create(&entrance, NULL, stay_in_sauna, ticket) != 0)
+            {
+                printf("Error creating thread\n");
+                return -1;
+            }
+
+            //Created Thread
+            tids[tid_index] = entrance;
+            tid_index++;
+        }
+        else
+        {
+            if (main_sex == ticket->sex)
+            {
+                pthread_mutex_lock(&mutex);
+                lugares_vagos--;
+                pthread_mutex_unlock(&mutex);
+                if (pthread_create(&entrance, NULL, stay_in_sauna, ticket) != 0)
+                {
+                    printf("Error creating thread\n");
+                    return -1;
+                }
+
+                tids[tid_index] = entrance;
+                tid_index++;
+                //Created Thread
+            }
+            else
+            {
+                ticket->rejected++;
+                gettimeofday(&end, NULL);
+                double delta_us = (end.tv_sec - start.tv_sec) * 1000.0f + (end.tv_usec - start.tv_usec) / 1000.0f;
+                printf("%8.2f - %4d - %20d - %5d: %c - %5d - REJECTED\n", delta_us, pid, pid, ticket->n_pedido, ticket->sex, ticket->time_to_spend);
+                fprintf(sauna_ficheiro, "%8.2f - %4d - %20d - %5d: %c - %5d - RECEIVED\n", delta_us, pid, pid, ticket->n_pedido, ticket->sex, ticket->time_to_spend);
+                updatestats(ticket->sex, 1);
+                if (ticket->rejected <= 3)
+                {
+                    n_le++;
+                }
+                //Rejected
+                if (write(fifo_rejeitado, ticket, sizeof(pedido)) == -1)
+                {
+                    printf("Error on writing\n");
+                    return -1;
+                }
+            }
+        }
+
+        if (n_le == 0)
+        {
+            pedido *ultimo = malloc(sizeof(pedido));
+            ultimo->time_to_spend = -1;
+            write(fifo_rejeitado, ultimo, sizeof(pedido));
+        }
+    } while (n_le != 0);
+    
+    return 0;
+}
+
 int main(int argc, char *argv[])
 {
 
     gettimeofday(&start, NULL);
-    int fifo_rejeitado, fifo_entrada;
-    
+
     pid_t pid;
     pid = getpid();
 
@@ -125,7 +208,7 @@ int main(int argc, char *argv[])
         printf("Wrong number of arguments. Recomended usage: sauna <number of spots>\n");
         return -1;
     }
-    sem_init(&sem,SHARED,n_lugares);
+    sem_init(&sem, SHARED, n_lugares);
 
     char file_name[MAX_MSG_LEN];
     sprintf(file_name, "/tmp/bal.%d", pid);
@@ -168,87 +251,9 @@ int main(int argc, char *argv[])
 
     read(fifo_entrada, &n_le, sizeof(n_le));
 
-    do
-    {
+    //Main Loop
+    response_ticket(pid);
 
-        pedido *ticket = malloc(sizeof(pedido));
-        pthread_t entrance;
-
-        if (read(fifo_entrada, ticket, sizeof(*ticket)) < 0)
-            return -1;
-        n_le--;
-
-        gettimeofday(&end, NULL);
-        double delta_us = (end.tv_sec - start.tv_sec) * 1000.0f + (end.tv_usec - start.tv_usec) / 1000.0f;
-        printf("%8.2f - %4d - %20d - %5d: %c - %5d - RECEIVED\n", delta_us, pid, pid, ticket->n_pedido, ticket->sex, ticket->time_to_spend);
-        fprintf(sauna_ficheiro, "%8.2f - %4d - %20d - %5d: %c - %5d - RECEIVED\n", delta_us, pid, pid, ticket->n_pedido, ticket->sex, ticket->time_to_spend);
-        updatestats(ticket->sex, 0);
-
-        if (main_sex == 'S')
-        {
-            //Entered without sex
-            main_sex = ticket->sex;
-            pthread_mutex_lock(&mutex);
-            lugares_vagos--;
-            pthread_mutex_unlock(&mutex);
-            if (pthread_create(&entrance, NULL, stay_in_sauna, ticket) != 0)
-            {
-                printf("Error creating thread\n");
-                return -1;
-            }
-
-            //Created Thread
-            tids[tid_index] = entrance;
-            tid_index++;
-        }
-        else
-        {
-            if (main_sex == ticket->sex)
-            {
-                    pthread_mutex_lock(&mutex);
-                    lugares_vagos--;
-                    pthread_mutex_unlock(&mutex);
-                    if (pthread_create(&entrance, NULL, stay_in_sauna, ticket) != 0)
-                    {
-                    printf("Error creating thread\n");
-                    return -1;
-                    }
-                
-               
-                tids[tid_index] = entrance;
-                tid_index++;
-                //Created Thread
-            }
-            else
-            {  
-                ticket->rejected++;
-                gettimeofday(&end, NULL);
-                double delta_us = (end.tv_sec - start.tv_sec) * 1000.0f + (end.tv_usec - start.tv_usec) / 1000.0f;
-                printf("%8.2f - %4d - %20d - %5d: %c - %5d - REJECTED\n", delta_us, pid, pid, ticket->n_pedido, ticket->sex, ticket->time_to_spend);
-                fprintf(sauna_ficheiro, "%8.2f - %4d - %20d - %5d: %c - %5d - RECEIVED\n", delta_us, pid, pid, ticket->n_pedido, ticket->sex, ticket->time_to_spend);
-                updatestats(ticket->sex, 1);
-                if (ticket->rejected <= 3)
-                {
-                    n_le++;
-                }
-                //Rejected
-                if (write(fifo_rejeitado, ticket, sizeof(pedido)) == -1)
-                {
-                    printf("Error on writing\n");
-                    return -1;
-                }
-            }
-        }
-        // printf("N_LE: %d\n",n_le);
-        if (n_le == 0)
-        {
-            pedido *ultimo = malloc(sizeof(pedido));
-            ultimo->time_to_spend = -1;
-            //printf("FEZ O \n");
-            write(fifo_rejeitado, ultimo, sizeof(pedido));
-        }
-
-    } while (n_le != 0);
     //Left
     close(fifo_rejeitado);
     close(fifo_entrada);
@@ -257,7 +262,6 @@ int main(int argc, char *argv[])
     for (; i <= tid_index; i++)
     {
         pthread_join(tids[i], NULL);
-            
     }
 
     printf("\n----------------------[FINAL SAUNA STATISTICS]-----------------------\n");
@@ -268,12 +272,10 @@ int main(int argc, char *argv[])
     fclose(sauna_ficheiro);
     if (unlink("/tmp/rejeitados") < 0)
     {
-        printf("Erro in destroying /tmp/rejeitados");
         return -1;
     }
     if (unlink("/tmp/entrada") < 0)
     {
-        printf("Erro in destroying /tmp/entrada");
         return -1;
     }
 

@@ -254,12 +254,10 @@ int main(int argc, char *argv[])
 
     if (unlink("/tmp/entrada") < 0)
     {
-        printf("Error when destroying FIFO /tmp/entrada\n");
         return -1;
     }
     if (unlink("/tmp/rejeitados") < 0)
     {
-        printf("Error when destroying FIFO /tmp/entrada\n");
         return -1;
     }
 

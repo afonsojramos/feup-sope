@@ -26,6 +26,7 @@ int ticket_id = 1;
 char message[100];
 struct timeval start, end;
 struct stats my_stats;
+FILE *gerador_ficheiro;
 
 char *concatStrings(const char *s1, const char *s2);
 int checkParameters(int argc, char *argv[]);
@@ -130,8 +131,9 @@ void *generate_tickets(void *arg)
 
     write(descriptor->fifo_entrada, ticket, sizeof(*ticket));
     gettimeofday(&end, NULL);
-    float delta_us = (float)((float)end.tv_usec - start.tv_usec) / 1000;
-    printf("%5.2f - %4d - %5d: %c - %5d - PEDIDO\n", delta_us, getpid(), ticket->n_pedido, ticket->sex, ticket->time_to_spend);
+    double delta_us =(end.tv_sec - start.tv_sec)*1000.0f + (end.tv_usec - start.tv_usec) / 1000.0f;
+    fprintf(gerador_ficheiro,"%6.2f - %4d - %5d: %c - %5d - PEDIDO\n", delta_us, getpid(), ticket->n_pedido, ticket->sex, ticket->time_to_spend);
+    printf("%6.2f - %4d - %5d: %c - %5d - PEDIDO\n", delta_us, getpid(), ticket->n_pedido, ticket->sex, ticket->time_to_spend);
     updatestats(ticket->sex, 0);
     pthread_exit(NULL);
     return NULL;
@@ -161,8 +163,9 @@ void *response_ticket(void *arg)
         if (ticket->time_to_spend == -1)
             break;
         gettimeofday(&end, NULL);
-        float delta_us = (float)((float)end.tv_usec - start.tv_usec) / 1000;
-        printf("%5.2f - %4d - %5d: %c - %5d - REJEITADO\n", delta_us, getpid(), ticket->n_pedido, ticket->sex, ticket->time_to_spend);
+        double delta_us =(end.tv_sec - start.tv_sec)*1000.0f + (end.tv_usec - start.tv_usec) / 1000.0f;
+        fprintf(gerador_ficheiro,"%6.2f - %4d - %5d: %c - %5d - REJEITADO\n", delta_us, getpid(), ticket->n_pedido, ticket->sex, ticket->time_to_spend);
+        printf("%6.2f - %4d - %5d: %c - %5d - REJEITADO\n", delta_us, getpid(), ticket->n_pedido, ticket->sex, ticket->time_to_spend);
         updatestats(ticket->sex, 1);
         // printf("n: %d\n",n);
         //printf("rejeitados: %d\n",ticket->rejected);
@@ -173,15 +176,17 @@ void *response_ticket(void *arg)
             // printf("escreveu");
             write(descriptor->fifo_entrada, ticket, sizeof(pedido));
             gettimeofday(&end, NULL);
-            float delta_us = (float)((float)end.tv_usec - start.tv_usec) / 1000;
-            printf("%5.2f - %4d - %5d: %c - %5d - PEDIDO\n", delta_us, getpid(), ticket->n_pedido, ticket->sex, ticket->time_to_spend);
+            double delta_us =(end.tv_sec - start.tv_sec)*1000.0f + (end.tv_usec - start.tv_usec) / 1000.0f;
+            fprintf(gerador_ficheiro,"%6.2f - %4d - %5d: %c - %5d - PEDIDO\n", delta_us, getpid(), ticket->n_pedido, ticket->sex, ticket->time_to_spend);
+            printf("%6.2f - %4d - %5d: %c - %5d - PEDIDO\n", delta_us, getpid(), ticket->n_pedido, ticket->sex, ticket->time_to_spend);
             updatestats(ticket->sex, 0);
         }
         else
         {
             gettimeofday(&end, NULL);
-            float delta_us = (float)((float)end.tv_usec - start.tv_usec) / 1000;
-            printf("%5.2f - %4d - %5d: %c - %5d - DESCARTADO\n", delta_us, getpid(), ticket->n_pedido, ticket->sex, ticket->time_to_spend);
+            double delta_us =(end.tv_sec - start.tv_sec)*1000.0f + (end.tv_usec - start.tv_usec) / 1000.0f;
+            fprintf(gerador_ficheiro,"%6.2f - %4d - %5d: %c - %5d - DESCARTADO\n", delta_us, getpid(), ticket->n_pedido, ticket->sex, ticket->time_to_spend);
+            printf("%6.2f - %4d - %5d: %c - %5d - DESCARTADO\n", delta_us, getpid(), ticket->n_pedido, ticket->sex, ticket->time_to_spend);
             updatestats(ticket->sex, 2);
         }
         // printf("iteracao2\n");
@@ -201,7 +206,7 @@ int main(int argc, char *argv[])
 
     int fd;
     int rejeitados_fifo;
-    int gerador_ficheiro;
+    
     //int requests_nr = atoi(argv[1]);
     //int maxDuration = atoi(argv[2]);
     srand(time(NULL));
@@ -211,13 +216,15 @@ int main(int argc, char *argv[])
     printf("numero pedidos %d\n", n_pedidos);
     printf("tempo %d\n", max_utilizacao);
 
-    if ((gerador_ficheiro = open("ger.pid", O_RDWR | O_CREAT | O_TRUNC | O_SYNC, 0666)) == -1)
+    char file_name[MAX_MSG_LEN];
+    sprintf(file_name,"/tmp/ger.%d",getpid());
+    if ((gerador_ficheiro = fopen(file_name,"a")) == NULL)
     {
         printf("Error trying to create file\n");
         return -1;
     }
 
-    int saved_stdout;
+    /*int saved_stdout;
 
     if ((saved_stdout = dup(1)) == -1)
     {
@@ -227,7 +234,7 @@ int main(int argc, char *argv[])
     {
         printf("Error trying to duplicate\n");
         return -1;
-    }
+    }*/
     // cria FIFO entrada de request para a sauna
     if (mkfifo(GENERATOR_FIFO, 0666) < 0)
     {
@@ -294,15 +301,15 @@ int main(int argc, char *argv[])
     //printf("saiu gerador\n");
     //close(rejeitados_fifo);
     //  close(fd);
-    close(gerador_ficheiro);
+    fclose(gerador_ficheiro);
 
-     if (dup2(saved_stdout, STDOUT_FILENO) == -1)
+   /*  if (dup2(saved_stdout, STDOUT_FILENO) == -1)
     {
         printf("Error trying to duplicate\n");
         return -1;
     }
 
-    close(saved_stdout);
+    close(saved_stdout);*/
     printf("N Pedidos: %d em que %d sao masculinos e %d sao femininos\n",my_stats.n_pedidos_f+my_stats.n_pedidos_m,my_stats.n_pedidos_m,my_stats.n_pedidos_f);
     printf("N Rejeitados: %d em que %d sao masculinos e %d sao femininos\n",my_stats.n_rejeitados_f+my_stats.n_rejeitados_m,my_stats.n_rejeitados_m,my_stats.n_rejeitados_f);
     printf("N Descartados: %d em que %d sao masculinos e %d sao femininos\n",my_stats.n_descartados_f+my_stats.n_descartados_m,my_stats.n_descartados_m,my_stats.n_descartados_f);

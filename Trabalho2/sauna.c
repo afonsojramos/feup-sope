@@ -40,7 +40,7 @@ pthread_t tids[255];
 int tid_index = 0;
 struct timeval start, end;
 struct stats my_stats;
-
+FILE * sauna_ficheiro;
 int readline(int fd, char *str);
 char *GENERATE_FIFO = "/tmp/entrada";
 char *REJECTED_FIFO = "/tmp/rejeitados";
@@ -90,7 +90,7 @@ void *stay_in_sauna(void *arg)
     pedido *request = (pedido *)arg;
     //printf("entrou thread id %d no sleep\n",request->n_pedido);
 
-    sleep(request->time_to_spend / 1000);
+    usleep(request->time_to_spend * 1000);
     // sleep(5);
     // printf("tempo %d\n",request->time_to_spend);
     // printf("saiu o id %d \n",request->n_pedido);
@@ -99,9 +99,11 @@ void *stay_in_sauna(void *arg)
     if (lugares_vagos == n_lugares)
         main_sex = 'S';
         gettimeofday(&end, NULL);
-    float delta_us = (float)(((float)end.tv_usec - start.tv_usec) / 1000);
-    printf("%5.2f - %4d - %20lu - %5d: %c - %5d - SERVIDO\n", delta_us, getpid(), (long)pthread_self(), request->n_pedido, request->sex, request->time_to_spend);
+    
     pthread_mutex_unlock(&mutex);
+    double delta_us =(end.tv_sec - start.tv_sec)*1000.0f + (end.tv_usec - start.tv_usec) / 1000.0f;
+    printf("%6.2f - %4d - %20lu - %5d: %c - %5d - SERVIDO\n", delta_us, getpid(), (long)pthread_self(), request->n_pedido, request->sex, request->time_to_spend);
+   fprintf(sauna_ficheiro,"%6.2f - %4d - %20lu - %5d: %c - %5d - SERVIDO\n", delta_us, getpid(), (long)pthread_self(), request->n_pedido, request->sex, request->time_to_spend);
     updatestats(request->sex, 2);
     
     pthread_exit(NULL);
@@ -131,7 +133,7 @@ int main(int argc, char *argv[])
     gettimeofday(&start, NULL);
     int fifo_rejeitado, fifo_entrada;
 
-    int sauna_ficheiro;
+   
     pid_t pid;
     pid = getpid();
     // char main_sex = 'S';
@@ -142,24 +144,27 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    if ((sauna_ficheiro = open("bal.pid", O_RDWR | O_CREAT | O_TRUNC | O_SYNC, 0666)) == -1)
+    char file_name[MAX_MSG_LEN];
+    sprintf(file_name,"/tmp/bal.%d",pid);
+
+    if ((sauna_ficheiro = fopen(file_name,"a")) == NULL)
     {
         printf("Error trying to create file\n");
         return -1;
     }
 
-    int saved_stdout;
+   /* int saved_stdout;
 
     if ((saved_stdout = dup(1)) == -1)
     {
         return -1;
-    }
+    }*/
 
-    if (dup2(sauna_ficheiro, STDOUT_FILENO) == -1)
+    /*if (dup2(sauna_ficheiro, STDOUT_FILENO) == -1)
     {
         printf("Error trying to duplicate\n");
         return -1;
-    }
+    }*/
 
     if (mkfifo(REJECTED_FIFO, 0666) < 0)
     {
@@ -213,8 +218,9 @@ int main(int argc, char *argv[])
         n_le--;
 
         gettimeofday(&end, NULL);
-        float delta_us = (float)(((float)end.tv_usec - start.tv_usec) / 1000);
-        printf("%5.2f - %4d - %20d - %5d: %c - %5d - RECEBIDO\n", delta_us, pid, pid, ticket->n_pedido, ticket->sex, ticket->time_to_spend);
+        double delta_us =(end.tv_sec - start.tv_sec)*1000.0f + (end.tv_usec - start.tv_usec) / 1000.0f;
+        printf("%6.2f - %4d - %20d - %5d: %c - %5d - RECEBIDO\n", delta_us, pid, pid, ticket->n_pedido, ticket->sex, ticket->time_to_spend);
+        fprintf(sauna_ficheiro,"%6.2f - %4d - %20d - %5d: %c - %5d - RECEBIDO\n", delta_us, pid, pid, ticket->n_pedido, ticket->sex, ticket->time_to_spend);
         updatestats(ticket->sex, 0);
 
         //printf("%d",pid);
@@ -266,8 +272,9 @@ int main(int argc, char *argv[])
             {
                 ticket->rejected++;
                 gettimeofday(&end, NULL);
-                float delta_us = (float)(((float)end.tv_usec - start.tv_usec) / 1000);
-                printf("%5.2f - %4d - %20d - %5d: %c - %5d - REJEITADO\n", delta_us, pid, pid, ticket->n_pedido, ticket->sex, ticket->time_to_spend);
+                double delta_us =(end.tv_sec - start.tv_sec)*1000.0f + (end.tv_usec - start.tv_usec) / 1000.0f;
+                printf("%6.2f - %4d - %20d - %5d: %c - %5d - REJEITADO\n", delta_us, pid, pid, ticket->n_pedido, ticket->sex, ticket->time_to_spend);
+               fprintf(sauna_ficheiro,"%6.2f - %4d - %20d - %5d: %c - %5d - RECEBIDO\n", delta_us, pid, pid, ticket->n_pedido, ticket->sex, ticket->time_to_spend);
                 updatestats(ticket->sex, 1);
                 if (ticket->rejected <= 3)
                 {
@@ -306,17 +313,17 @@ int main(int argc, char *argv[])
    /*do{
         
     }while(n_lugares != lugares_vagos);*/
- if (dup2(saved_stdout, STDOUT_FILENO) == -1)
+/* if (dup2(saved_stdout, STDOUT_FILENO) == -1)
     {
         printf("Error trying to duplicate\n");
         return -1;
-    }
+    }*/
 
     printf("N Pedidos: %d em que %d sao masculinos e %d sao femininos\n",my_stats.n_pedidos_feitos_f+my_stats.n_pedidos_feitos_m,my_stats.n_pedidos_feitos_m,my_stats.n_pedidos_feitos_f);
     printf("N Rejeitados: %d em que %d sao masculinos e %d sao femininos\n",my_stats.n_rejeitados_f+my_stats.n_rejeitados_m,my_stats.n_rejeitados_m,my_stats.n_rejeitados_f);
     printf("N Servidos: %d em que %d sao masculinos e %d sao femininos\n",my_stats.n_servidos_f+my_stats.n_servidos_m,my_stats.n_servidos_m,my_stats.n_servidos_f);
 
-    /*if (unlink("/tmp/rejeitados") < 0)
+    if (unlink("/tmp/rejeitados") < 0)
     {
         //printf("Erro in destroying /tmp/rejeitados");
        // return -1;
@@ -333,12 +340,12 @@ int main(int argc, char *argv[])
     else
     {
         
-    }*/
+    }
         // printf("/tmp/rejeitados destroyed successfuly");
 
         /*while(readline(fd,str))
       printf("%s",str);*/
-      close(saved_stdout);
-      close(sauna_ficheiro);
+     // close(saved_stdout);
+      fclose(sauna_ficheiro);
         return 0;
 }

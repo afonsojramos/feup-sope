@@ -331,5 +331,5 @@ int main(int argc, char *argv[])
 
         /*while(readline(fd,str))
       printf("%s",str);*/
-        exit(0);
+        return 0;
 }

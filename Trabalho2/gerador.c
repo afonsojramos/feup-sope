@@ -313,5 +313,5 @@ int main(int argc, char *argv[])
     }
 
     // else printf("Entrada fifo destryed succesfully\n");
-    exit(0);
+    return 0;
 }

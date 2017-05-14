@@ -199,20 +199,15 @@ int main(int argc, char *argv[])
         }
         else
         {
-            if (main_sex == ticket->sex)
+            if (main_sex == ticket->sex && lugares_vagos != 0)
             {
 
-                if(lugares_vagos == 0)
-                {
-
-                }else if(lugares_vagos != 0)
-                {
-                     if (pthread_create(&entrance, NULL, stay_in_sauna, ticket) != 0)
+                    if (pthread_create(&entrance, NULL, stay_in_sauna, ticket) != 0)
                     {
                     printf("Error creating thread\n");
                     return -1;
                     }
-                }
+                
                
                 tids[tid_index] = entrance;
                 tid_index++;

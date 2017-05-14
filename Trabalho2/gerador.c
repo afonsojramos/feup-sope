@@ -8,26 +8,41 @@
 #include <errno.h>
 #include <string.h>
 #include <pthread.h>
-#include <time.h>
+#include <sys/time.h>
 
 #define MAX_MSG_LEN 1000
 #define READ 0
 #define WRITE 1
 
 int n_pedidos;
+int n_le;
 int max_utilizacao;
 int fd;
 int p;
 char g;
 int t;
 int messagelen;
+int ticket_id = 1;
 char message[100];
+struct timeval start,end;
 
 char *concatStrings(const char *s1, const char *s2);
 int checkParameters(int argc, char *argv[]);
 void *generate_tickets(void *arg);
 char *GENERATOR_FIFO = "/tmp/entrada";
 char *REJECTED_FIFO = "/tmp/rejeitados";
+
+typedef struct pedido{
+    int n_pedido;
+    char sex;
+    int time_to_spend;
+    int rejected;
+}pedido;
+
+typedef struct descriptors{
+    int fifo_entrada;
+    int fifo_rejeitados;
+}descriptors;
 
 int checkParameters(int argc, char *argv[])
 {
@@ -36,6 +51,7 @@ int checkParameters(int argc, char *argv[])
     char ped[MAX_MSG_LEN];
     strcpy(ped, argv[1]);
     n_pedidos = atoi(ped);
+    n_le = n_pedidos;
     max_utilizacao = atoi(argv[2]);
     return 0;
 }
@@ -63,49 +79,117 @@ char *concatStrings(const char *str1, const char *str2)
 void *generate_tickets(void *arg)
 {
 
+    pedido* ticket = malloc(sizeof(pedido));
+    descriptors *descriptor = malloc(sizeof(descriptors));
+    descriptor = (descriptors*)arg;
     char sexes[] = {'M', 'F'};
-    char *ret = "";
-    char timestr[MAX_MSG_LEN];
     int timet = rand() % max_utilizacao + 1;
 
     char selected_sex = sexes[rand() % 2];
-    char sex[2];
-    sprintf(sex, "%c", selected_sex);
+    ticket->sex = selected_sex;
+    ticket->n_pedido = ticket_id;
+    ticket->time_to_spend = timet;
+    ticket->rejected = 0;
 
-    sprintf(timestr, "%d", timet);
-    strcat(sex, " ");
+    write(descriptor->fifo_entrada,ticket,sizeof(*ticket));
+     gettimeofday(&end,NULL);
+    float delta_us = (float)((float)end.tv_usec - start.tv_usec)/1000;
+    printf("%5.2f - %4d - %5d: %c - %5d - PEDIDO\n",delta_us,getpid(),ticket->n_pedido,ticket->sex,ticket->time_to_spend);
+    pthread_exit(NULL);
+    return NULL;
+}
 
-    ret = concatStrings(ret, sex);
-    ret = concatStrings(ret, timestr);
-    return ret;
+void *stay_opened(void *arg)
+{
+
+    open(GENERATOR_FIFO,O_WRONLY);
+    printf("entro no sleep\n");
+    sleep(999);
+    return NULL;
+}
+
+void *response_ticket(void *arg)
+{
+    int n = 1;
+     pedido* ticket = malloc(sizeof(pedido));
+   descriptors *descriptor = malloc(sizeof(descriptors));
+    descriptor = (descriptors*)arg;
+   
+      do{
+
+       // printf("tentar read\n");
+        n = read(descriptor->fifo_rejeitados,ticket,sizeof(pedido));
+        if(ticket->time_to_spend == -1)
+            break;
+         gettimeofday(&end,NULL);
+        float delta_us = (float)((float)end.tv_usec - start.tv_usec)/1000;
+        printf("%5.2f - %4d - %5d: %c - %5d - REJEITADO\n",delta_us,getpid(),ticket->n_pedido,ticket->sex,ticket->time_to_spend);    
+       // printf("n: %d\n",n);
+        //printf("rejeitados: %d\n",ticket->rejected);
+       // printf("leu\n");
+       // printf("rejeitado\n id: %d, sexo: %c, tempo: %d, rejeitados: %d",ticket->n_pedido,ticket->sex,ticket->time_to_spend,ticket->rejected);
+        if(ticket->rejected <= 3)
+        {
+           // printf("escreveu");
+            write(descriptor->fifo_entrada,ticket,sizeof(pedido));
+            gettimeofday(&end,NULL);
+            float delta_us = (float)((float)end.tv_usec - start.tv_usec)/1000;
+            printf("%5.2f - %4d - %5d: %c - %5d - PEDIDO\n",delta_us,getpid(),ticket->n_pedido,ticket->sex,ticket->time_to_spend);
+        }else
+        {
+             gettimeofday(&end,NULL);
+            float delta_us = (float)((float)end.tv_usec - start.tv_usec)/1000;
+            printf("%5.2f - %4d - %5d: %c - %5d - DESCARTADO\n",delta_us,getpid(),ticket->n_pedido,ticket->sex,ticket->time_to_spend);
+        }
+       // printf("iteracao2\n");
+      }while(n > 0);
+   // printf("resposta da cena\n");
+    pthread_exit(NULL);
+    return NULL;
 }
 
 
 int main(int argc, char *argv[])
 {
+     gettimeofday(&start,NULL);
     if (checkParameters(argc, argv) != 0)
     {
         printf("Wrong number of arguments. Recomended usage: program_name <number of requests> <max duration>\n");
+        return -1;
     }
 
     int fd;
     int rejeitados_fifo;
+    int gerador_ficheiro;
     //int requests_nr = atoi(argv[1]);
     //int maxDuration = atoi(argv[2]);
-    char str[MAX_MSG_LEN];
     srand(time(NULL));
+    descriptors *descritores = malloc(sizeof(descriptors));
     pthread_t t_randomTickets, t_readResponse;
-    int ticket_id = 1;
-    char *requests;
+    //int ticket_id = 1;
     printf("numero pedidos %d\n", n_pedidos);
     printf("tempo %d\n", max_utilizacao);
 
+
+ if((gerador_ficheiro = open("ger.pid",O_RDWR | O_CREAT | O_TRUNC | O_SYNC,0666)) == -1 )
+    {
+        printf("Error trying to create file\n");
+        return -1;
+    }
+
+
+    if(dup2(gerador_ficheiro,STDOUT_FILENO) == -1)
+    {
+        printf("Error trying to duplicate\n");
+        return -1;
+    }
     // cria FIFO entrada de request para a sauna
-    if (mkfifo(GENERATOR_FIFO, 0666) < 0)
+    if (mkfifo(GENERATOR_FIFO, 0666 ) < 0)
     {
         if (errno == EEXIST)
         {
            printf("FIFO '/tmp/entrada' already exists!\n");
+           return -1;
         }
         else
         {
@@ -119,6 +203,7 @@ int main(int argc, char *argv[])
         if (errno == EEXIST)
         {
            printf("FIFO '/tmp/rejeitados' already exists!\n");
+           return -1;
         }
         else
         {
@@ -138,26 +223,39 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    do
-    {
-        pthread_create(&t_randomTickets, NULL, generate_tickets, NULL);
-        if (pthread_join(t_randomTickets, (void **)&requests) != 0)
-            return -2;
+    descritores->fifo_entrada = fd;
+    descritores->fifo_rejeitados=rejeitados_fifo;
 
-        char ticket[MAX_MSG_LEN];
-        sprintf(ticket, "%d ", ticket_id);
+    write(descritores->fifo_entrada,&n_le,sizeof(n_le));
+    /*pthread_attr_t attr;
+    pthread_attr_init(&attr);
+    pthread_attr_setdetachstate(&attr,PTHREAD_CREATE_DETACHED);
 
-        strcat(ticket, requests);
-        write(fd, ticket, MAX_MSG_LEN);
-      // char new_str[MAX_MSG_LEN];
-       //read(rejeitados_fifo,new_str,MAX_MSG_LEN);
+    pthread_create(&t_open,&attr,stay_opened,NULL);*/
+   while(ticket_id <= n_pedidos)
+   {
+
+        pthread_create(&t_randomTickets, NULL, generate_tickets, descritores);
+       if (pthread_join(t_randomTickets, NULL) != 0)
+           return -2;
+
         ticket_id++;
 
-    } while (ticket_id <= n_pedidos);
+    }
 
-    close(rejeitados_fifo);
-    close(fd);
+  pthread_create(&t_readResponse,NULL,response_ticket,descritores);
+          if (pthread_join(t_readResponse, NULL) != 0)
+           return -2;
+
+    //printf("saiu gerador\n");
+   //close(rejeitados_fifo);
+  //  close(fd);
     if (unlink("/tmp/entrada") < 0)
-        printf("Error when destroying FIFO /tmp/entrada\n");
+    {
+        //printf("Error when destroying FIFO /tmp/entrada\n");
+        return -1;
+    }
+       
+   // else printf("Entrada fifo destryed succesfully\n");
     exit(0);
 }

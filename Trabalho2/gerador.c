@@ -311,6 +311,11 @@ int main(int argc, char *argv[])
         //printf("Error when destroying FIFO /tmp/entrada\n");
         return -1;
     }
+    if (unlink("/tmp/rejeitados") < 0)
+    {
+        //printf("Error when destroying FIFO /tmp/entrada\n");
+        return -1;
+    }
 
     // else printf("Entrada fifo destryed succesfully\n");
     return 0;

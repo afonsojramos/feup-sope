@@ -296,40 +296,49 @@ int main(int argc, char *argv[])
     close(fifo_entrada);
     
     int i = 0;
-    while (i <= tid_index)
+    for(;i <= tid_index;i++)
     {
 
         if(pthread_join(tids[i], NULL) != 0)
             return -2;
-        i++;
     }
-    close(sauna_ficheiro);
+  
    /*do{
         
     }while(n_lugares != lugares_vagos);*/
- /* if (dup2(saved_stdout, STDOUT_FILENO) == -1)
+ if (dup2(saved_stdout, STDOUT_FILENO) == -1)
     {
         printf("Error trying to duplicate\n");
         return -1;
-    }*/
+    }
 
-
-
-    close(saved_stdout);
-   
     printf("N Pedidos: %d em que %d sao masculinos e %d sao femininos\n",my_stats.n_pedidos_feitos_f+my_stats.n_pedidos_feitos_m,my_stats.n_pedidos_feitos_m,my_stats.n_pedidos_feitos_f);
     printf("N Rejeitados: %d em que %d sao masculinos e %d sao femininos\n",my_stats.n_rejeitados_f+my_stats.n_rejeitados_m,my_stats.n_rejeitados_m,my_stats.n_rejeitados_f);
     printf("N Servidos: %d em que %d sao masculinos e %d sao femininos\n",my_stats.n_servidos_f+my_stats.n_servidos_m,my_stats.n_servidos_m,my_stats.n_servidos_f);
 
-    if (unlink("/tmp/rejeitados") < 0)
+    /*if (unlink("/tmp/rejeitados") < 0)
     {
         //printf("Erro in destroying /tmp/rejeitados");
-        return -1;
+       // return -1;
     }
     else
+    {
+
+    }
+     if (unlink("/tmp/entrada") < 0)
+    {
+        //printf("Erro in destroying /tmp/rejeitados");
+        //return -1;
+    }
+    else
+    {
+        
+    }*/
         // printf("/tmp/rejeitados destroyed successfuly");
 
         /*while(readline(fd,str))
       printf("%s",str);*/
+      close(saved_stdout);
+      close(sauna_ficheiro);
         return 0;
 }

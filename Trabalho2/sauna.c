@@ -24,12 +24,12 @@ typedef struct pedido
 
 typedef struct stats
 {
-    int n_pedidos_feitos_m = 0;
-    int n_pedidos_feitos_f = 0;
-    int n_rejeitados_f = 0;
-    int n_rejeitados_m = 0;
-    int n_servidos_f = 0;
-    int n_servidos_m = 0;
+    int n_pedidos_feitos_m;
+    int n_pedidos_feitos_f;
+    int n_rejeitados_f;
+    int n_rejeitados_m;
+    int n_servidos_f;
+    int n_servidos_m ;
 } stats;
 
 int n_lugares;
@@ -73,14 +73,14 @@ void updatestats(char sex, int type)
         if (sex == 'M')
             my_stats.n_rejeitados_m++;
         else if (sex == 'F')
-            my_stats.n_pedidos_rejeitados_f++;
+            my_stats.n_rejeitados_f++;
     }
     else if (type == 2)
     {
         if (sex == 'M')
-            my_stats.n_pedidos_servidos_m++;
+            my_stats.n_servidos_m++;
         else if (sex == 'F')
-            my_stats.n_pedidos_servidos_f++;
+            my_stats.n_servidos_f++;
     }
 }
 
@@ -98,13 +98,12 @@ void *stay_in_sauna(void *arg)
     lugares_vagos++;
     if (lugares_vagos == n_lugares)
         main_sex = 'S';
-    float delta_us = (float)((float)end.tv_usec - start.tv_usec) / 1000;
+        gettimeofday(&end, NULL);
+    float delta_us = (float)(((float)end.tv_usec - start.tv_usec) / 1000);
     printf("%5.2f - %4d - %20lu - %5d: %c - %5d - SERVIDO\n", delta_us, getpid(), (long)pthread_self(), request->n_pedido, request->sex, request->time_to_spend);
-    updatestats(ticket->sex, 2);
-
     pthread_mutex_unlock(&mutex);
-    gettimeofday(&end, NULL);
-
+    updatestats(request->sex, 2);
+    
     pthread_exit(NULL);
 }
 
@@ -214,7 +213,7 @@ int main(int argc, char *argv[])
         n_le--;
 
         gettimeofday(&end, NULL);
-        float delta_us = (float)((float)end.tv_usec - start.tv_usec) / 1000;
+        float delta_us = (float)(((float)end.tv_usec - start.tv_usec) / 1000);
         printf("%5.2f - %4d - %20d - %5d: %c - %5d - RECEBIDO\n", delta_us, pid, pid, ticket->n_pedido, ticket->sex, ticket->time_to_spend);
         updatestats(ticket->sex, 0);
 
@@ -237,8 +236,9 @@ int main(int argc, char *argv[])
         {
             //printf("entrou sem sexo\n");
             main_sex = ticket->sex;
-
+            pthread_mutex_lock(&mutex);
             lugares_vagos--;
+            pthread_mutex_unlock(&mutex);
             if (pthread_create(&entrance, NULL, stay_in_sauna, ticket) != 0)
             {
                 printf("error creating thread\n");
@@ -266,7 +266,7 @@ int main(int argc, char *argv[])
             {
                 ticket->rejected++;
                 gettimeofday(&end, NULL);
-                float delta_us = (float)((float)end.tv_usec - start.tv_usec) / 1000;
+                float delta_us = (float)(((float)end.tv_usec - start.tv_usec) / 1000);
                 printf("%5.2f - %4d - %20d - %5d: %c - %5d - REJEITADO\n", delta_us, pid, pid, ticket->n_pedido, ticket->sex, ticket->time_to_spend);
                 updatestats(ticket->sex, 1);
                 if (ticket->rejected <= 3)
@@ -294,13 +294,33 @@ int main(int argc, char *argv[])
     //printf("saiu\n");
     close(fifo_rejeitado);
     close(fifo_entrada);
+    
     int i = 0;
     while (i <= tid_index)
     {
 
-        pthread_join(tids[i], NULL);
+        if(pthread_join(tids[i], NULL) != 0)
+            return -2;
         i++;
     }
+    close(sauna_ficheiro);
+   /*do{
+        
+    }while(n_lugares != lugares_vagos);*/
+ /* if (dup2(saved_stdout, STDOUT_FILENO) == -1)
+    {
+        printf("Error trying to duplicate\n");
+        return -1;
+    }*/
+
+
+
+    close(saved_stdout);
+   
+    printf("N Pedidos: %d em que %d sao masculinos e %d sao femininos\n",my_stats.n_pedidos_feitos_f+my_stats.n_pedidos_feitos_m,my_stats.n_pedidos_feitos_m,my_stats.n_pedidos_feitos_f);
+    printf("N Rejeitados: %d em que %d sao masculinos e %d sao femininos\n",my_stats.n_rejeitados_f+my_stats.n_rejeitados_m,my_stats.n_rejeitados_m,my_stats.n_rejeitados_f);
+    printf("N Servidos: %d em que %d sao masculinos e %d sao femininos\n",my_stats.n_servidos_f+my_stats.n_servidos_m,my_stats.n_servidos_m,my_stats.n_servidos_f);
+
     if (unlink("/tmp/rejeitados") < 0)
     {
         //printf("Erro in destroying /tmp/rejeitados");

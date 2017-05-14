@@ -9,12 +9,14 @@
 #include <string.h>
 #include <pthread.h>
 #include <sys/time.h>
+#include <semaphore.h>
 
 #define MAX_MSG_LEN 1000
 #define READ 0
 #define WRITE 1
 #define GENERATE_FIFO "/tmp/entrada"
 #define REJECTED_FIFO "/tmp/rejeitados"
+#define SHARED 0
 
 int n_lugares;
 int n_le;
@@ -25,6 +27,7 @@ int tid_index = 0;
 struct timeval start, end;
 struct stats my_stats;
 FILE *sauna_ficheiro;
+sem_t sem;
 
 typedef struct pedido
 {
@@ -85,20 +88,20 @@ void updatestats(char sex, int type)
 void *stay_in_sauna(void *arg)
 {
     pedido *request = (pedido *)arg;
-
+    sem_wait(&sem);
     usleep(request->time_to_spend * 1000);
 
     pthread_mutex_lock(&mutex);
     lugares_vagos++;
     if (lugares_vagos == n_lugares)
         main_sex = 'S';
-    gettimeofday(&end, NULL);
-
     pthread_mutex_unlock(&mutex);
+    gettimeofday(&end, NULL);
     double delta_us = (end.tv_sec - start.tv_sec) * 1000.0f + (end.tv_usec - start.tv_usec) / 1000.0f;
     printf("%6.2f - %4d - %20lu - %5d: %c - %5d - SERVED\n", delta_us, getpid(), (long)pthread_self(), request->n_pedido, request->sex, request->time_to_spend);
     fprintf(sauna_ficheiro, "%6.2f - %4d - %20lu - %5d: %c - %5d - SERVED\n", delta_us, getpid(), (long)pthread_self(), request->n_pedido, request->sex, request->time_to_spend);
     updatestats(request->sex, 2);
+    sem_post(&sem);
 
     pthread_exit(NULL);
 }
@@ -113,7 +116,7 @@ int main(int argc, char *argv[])
 
     gettimeofday(&start, NULL);
     int fifo_rejeitado, fifo_entrada;
-
+    
     pid_t pid;
     pid = getpid();
 
@@ -122,6 +125,7 @@ int main(int argc, char *argv[])
         printf("Wrong number of arguments. Recomended usage: sauna <number of spots>\n");
         return -1;
     }
+    sem_init(&sem,SHARED,n_lugares);
 
     char file_name[MAX_MSG_LEN];
     sprintf(file_name, "/tmp/bal.%d", pid);
@@ -199,9 +203,11 @@ int main(int argc, char *argv[])
         }
         else
         {
-            if (main_sex == ticket->sex && lugares_vagos != 0)
+            if (main_sex == ticket->sex)
             {
-
+                    pthread_mutex_lock(&mutex);
+                    lugares_vagos--;
+                    pthread_mutex_unlock(&mutex);
                     if (pthread_create(&entrance, NULL, stay_in_sauna, ticket) != 0)
                     {
                     printf("Error creating thread\n");

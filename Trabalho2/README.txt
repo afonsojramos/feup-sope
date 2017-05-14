@@ -8,4 +8,5 @@ Elementos:
 Sucintamente, para resolver as situações de competição(race conditions) no acesso a elementos partilhados , decidimos
 recorrer ao uso de mutexes, em que existe uma variavel que é o numero de lugares vagos na sauna.Esta variavel vai ser alterada
 por cada thread que representa uma pessoa a usar a sauna, logo e usado mutex para resolver os conflitos de haver varias threads a 
-tentar alterar a variavel ao mesmo tempo.	
+tentar alterar a variavel ao mesmo tempo.	Tambem nos foi util o uso de semaforo para sincronizar as threads de pedidos de sexo aceite que necessitam
+de esperar que alguma thread acabe.

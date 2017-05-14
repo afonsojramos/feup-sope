@@ -13,26 +13,18 @@
 #define MAX_MSG_LEN 1000
 #define READ 0
 #define WRITE 1
+#define GENERATOR_FIFO "/tmp/entrada"
+#define REJECTED_FIFO "/tmp/rejeitados"
 
 int n_pedidos;
-int n_le;
 int max_utilizacao;
-int fd;
-int p;
-char g;
-int t;
-int messagelen;
 int ticket_id = 1;
-char message[100];
 struct timeval start, end;
 struct stats my_stats;
 FILE *gerador_ficheiro;
 
 char *concatStrings(const char *s1, const char *s2);
 int checkParameters(int argc, char *argv[]);
-void *generate_tickets(void *arg);
-char *GENERATOR_FIFO = "/tmp/entrada";
-char *REJECTED_FIFO = "/tmp/rejeitados";
 
 typedef struct stats
 {
@@ -65,7 +57,6 @@ int checkParameters(int argc, char *argv[])
     char ped[MAX_MSG_LEN];
     strcpy(ped, argv[1]);
     n_pedidos = atoi(ped);
-    n_le = n_pedidos;
     max_utilizacao = atoi(argv[2]);
     return 0;
 }
@@ -131,20 +122,11 @@ void *generate_tickets(void *arg)
 
     write(descriptor->fifo_entrada, ticket, sizeof(*ticket));
     gettimeofday(&end, NULL);
-    double delta_us =(end.tv_sec - start.tv_sec)*1000.0f + (end.tv_usec - start.tv_usec) / 1000.0f;
-    fprintf(gerador_ficheiro,"%6.2f - %4d - %5d: %c - %5d - PEDIDO\n", delta_us, getpid(), ticket->n_pedido, ticket->sex, ticket->time_to_spend);
-    printf("%6.2f - %4d - %5d: %c - %5d - PEDIDO\n", delta_us, getpid(), ticket->n_pedido, ticket->sex, ticket->time_to_spend);
+    double delta_us = (end.tv_sec - start.tv_sec) * 1000.0f + (end.tv_usec - start.tv_usec) / 1000.0f;
+    fprintf(gerador_ficheiro, "%6.2f - %4d - %5d: %c - %5d - REQUEST\n", delta_us, getpid(), ticket->n_pedido, ticket->sex, ticket->time_to_spend);
+    printf("%6.2f - %4d - %5d: %c - %5d - REQUEST\n", delta_us, getpid(), ticket->n_pedido, ticket->sex, ticket->time_to_spend);
     updatestats(ticket->sex, 0);
     pthread_exit(NULL);
-    return NULL;
-}
-
-void *stay_opened(void *arg)
-{
-
-    open(GENERATOR_FIFO, O_WRONLY);
-    printf("entro no sleep\n");
-    sleep(999);
     return NULL;
 }
 
@@ -157,41 +139,33 @@ void *response_ticket(void *arg)
 
     do
     {
-
-        // printf("tentar read\n");
         n = read(descriptor->fifo_rejeitados, ticket, sizeof(pedido));
         if (ticket->time_to_spend == -1)
             break;
         gettimeofday(&end, NULL);
-        double delta_us =(end.tv_sec - start.tv_sec)*1000.0f + (end.tv_usec - start.tv_usec) / 1000.0f;
-        fprintf(gerador_ficheiro,"%6.2f - %4d - %5d: %c - %5d - REJEITADO\n", delta_us, getpid(), ticket->n_pedido, ticket->sex, ticket->time_to_spend);
-        printf("%6.2f - %4d - %5d: %c - %5d - REJEITADO\n", delta_us, getpid(), ticket->n_pedido, ticket->sex, ticket->time_to_spend);
+        double delta_us = (end.tv_sec - start.tv_sec) * 1000.0f + (end.tv_usec - start.tv_usec) / 1000.0f;
+        fprintf(gerador_ficheiro, "%6.2f - %4d - %5d: %c - %5d - REJECTED\n", delta_us, getpid(), ticket->n_pedido, ticket->sex, ticket->time_to_spend);
+        printf("%6.2f - %4d - %5d: %c - %5d - REJECTED\n", delta_us, getpid(), ticket->n_pedido, ticket->sex, ticket->time_to_spend);
         updatestats(ticket->sex, 1);
-        // printf("n: %d\n",n);
-        //printf("rejeitados: %d\n",ticket->rejected);
-        // printf("leu\n");
-        // printf("rejeitado\n id: %d, sexo: %c, tempo: %d, rejeitados: %d",ticket->n_pedido,ticket->sex,ticket->time_to_spend,ticket->rejected);
+
         if (ticket->rejected <= 3)
         {
-            // printf("escreveu");
             write(descriptor->fifo_entrada, ticket, sizeof(pedido));
             gettimeofday(&end, NULL);
-            double delta_us =(end.tv_sec - start.tv_sec)*1000.0f + (end.tv_usec - start.tv_usec) / 1000.0f;
-            fprintf(gerador_ficheiro,"%6.2f - %4d - %5d: %c - %5d - PEDIDO\n", delta_us, getpid(), ticket->n_pedido, ticket->sex, ticket->time_to_spend);
-            printf("%6.2f - %4d - %5d: %c - %5d - PEDIDO\n", delta_us, getpid(), ticket->n_pedido, ticket->sex, ticket->time_to_spend);
+            double delta_us = (end.tv_sec - start.tv_sec) * 1000.0f + (end.tv_usec - start.tv_usec) / 1000.0f;
+            fprintf(gerador_ficheiro, "%6.2f - %4d - %5d: %c - %5d - REQUESTED\n", delta_us, getpid(), ticket->n_pedido, ticket->sex, ticket->time_to_spend);
+            printf("%6.2f - %4d - %5d: %c - %5d - REQUESTED\n", delta_us, getpid(), ticket->n_pedido, ticket->sex, ticket->time_to_spend);
             updatestats(ticket->sex, 0);
         }
         else
         {
             gettimeofday(&end, NULL);
-            double delta_us =(end.tv_sec - start.tv_sec)*1000.0f + (end.tv_usec - start.tv_usec) / 1000.0f;
-            fprintf(gerador_ficheiro,"%6.2f - %4d - %5d: %c - %5d - DESCARTADO\n", delta_us, getpid(), ticket->n_pedido, ticket->sex, ticket->time_to_spend);
-            printf("%6.2f - %4d - %5d: %c - %5d - DESCARTADO\n", delta_us, getpid(), ticket->n_pedido, ticket->sex, ticket->time_to_spend);
+            double delta_us = (end.tv_sec - start.tv_sec) * 1000.0f + (end.tv_usec - start.tv_usec) / 1000.0f;
+            fprintf(gerador_ficheiro, "%6.2f - %4d - %5d: %c - %5d - DISCARDED\n", delta_us, getpid(), ticket->n_pedido, ticket->sex, ticket->time_to_spend);
+            printf("%6.2f - %4d - %5d: %c - %5d - DISCARDED\n", delta_us, getpid(), ticket->n_pedido, ticket->sex, ticket->time_to_spend);
             updatestats(ticket->sex, 2);
         }
-        // printf("iteracao2\n");
     } while (n > 0);
-    // printf("resposta da cena\n");
     pthread_exit(NULL);
 }
 
@@ -200,76 +174,51 @@ int main(int argc, char *argv[])
     gettimeofday(&start, NULL);
     if (checkParameters(argc, argv) != 0)
     {
-        printf("Wrong number of arguments. Recomended usage: program_name <number of requests> <max duration>\n");
+        printf("Wrong number of arguments. Recomended usage: gerador <number of requests> <max duration>\n");
         return -1;
     }
 
     int fd;
     int rejeitados_fifo;
-    
-    //int requests_nr = atoi(argv[1]);
-    //int maxDuration = atoi(argv[2]);
+
     srand(time(NULL));
     descriptors *descritores = malloc(sizeof(descriptors));
     pthread_t t_randomTickets, t_readResponse;
-    //int ticket_id = 1;
-    printf("numero pedidos %d\n", n_pedidos);
-    printf("tempo %d\n", max_utilizacao);
+    printf("Number of Requests %d\n", n_pedidos);
+    printf("Maximum Run Time %d\n", max_utilizacao);
 
     char file_name[MAX_MSG_LEN];
-    sprintf(file_name,"/tmp/ger.%d",getpid());
-    if ((gerador_ficheiro = fopen(file_name,"a")) == NULL)
+    sprintf(file_name, "/tmp/ger.%d", getpid());
+    if ((gerador_ficheiro = fopen(file_name, "a")) == NULL)
     {
         printf("Error trying to create file\n");
         return -1;
     }
 
-    /*int saved_stdout;
-
-    if ((saved_stdout = dup(1)) == -1)
-    {
-        return -1;
-    }
-    if (dup2(gerador_ficheiro, STDOUT_FILENO) == -1)
-    {
-        printf("Error trying to duplicate\n");
-        return -1;
-    }*/
-    // cria FIFO entrada de request para a sauna
+    //Created entrance FIFO request for the sauna
     if (mkfifo(GENERATOR_FIFO, 0666) < 0)
     {
-        if (errno == EEXIST)
-        {
-            printf("FIFO '/tmp/entrada' already exists!\n");
-            return -1;
-        }
-        else
+        if (errno != EEXIST)
         {
             printf("Can't create FIFO\n");
             return -1;
         }
     }
-
+    //Created rejected FIFO request for the sauna
     if (mkfifo(REJECTED_FIFO, 0666) < 0)
     {
-        if (errno == EEXIST)
-        {
-            printf("FIFO '/tmp/rejeitados' already exists!\n");
-            return -1;
-        }
-        else
+        if (errno != EEXIST)
         {
             printf("Can't create FIFO\n");
             return -1;
         }
     }
 
-    //abre o FIFO criado no modo de leitura
+    //Opens created FIFOs
     if ((fd = open(GENERATOR_FIFO, O_WRONLY)) == -1)
     {
         return -1;
     }
-
     if ((rejeitados_fifo = open(REJECTED_FIFO, O_RDONLY)) == -1)
     {
         return -1;
@@ -278,15 +227,10 @@ int main(int argc, char *argv[])
     descritores->fifo_entrada = fd;
     descritores->fifo_rejeitados = rejeitados_fifo;
 
-    write(descritores->fifo_entrada, &n_le, sizeof(n_le));
-    /*pthread_attr_t attr;
-    pthread_attr_init(&attr);
-    pthread_attr_setdetachstate(&attr,PTHREAD_CREATE_DETACHED);
+    write(descritores->fifo_entrada, &n_pedidos, sizeof(n_pedidos));
 
-    pthread_create(&t_open,&attr,stay_opened,NULL);*/
     while (ticket_id <= n_pedidos)
     {
-
         pthread_create(&t_randomTickets, NULL, generate_tickets, descritores);
         if (pthread_join(t_randomTickets, NULL) != 0)
             return -2;
@@ -298,32 +242,24 @@ int main(int argc, char *argv[])
     if (pthread_join(t_readResponse, NULL) != 0)
         return -2;
 
-    //printf("saiu gerador\n");
-    //close(rejeitados_fifo);
-    //  close(fd);
     fclose(gerador_ficheiro);
 
-   /*  if (dup2(saved_stdout, STDOUT_FILENO) == -1)
-    {
-        printf("Error trying to duplicate\n");
-        return -1;
-    }
+    printf("\n---------------------[FINAL GENERATOR STATISTICS]--------------------\n");
+    printf("Number of Requests: %d in which %d are Male and %d are Female\n", my_stats.n_pedidos_f + my_stats.n_pedidos_m, my_stats.n_pedidos_m, my_stats.n_pedidos_f);
+    printf("Number of Rejected: %d in which %d are Male and %d are Female\n", my_stats.n_rejeitados_f + my_stats.n_rejeitados_m, my_stats.n_rejeitados_m, my_stats.n_rejeitados_f);
+    printf("Number of Discarded: %d in which %d are Male and %d are Female\n", my_stats.n_descartados_f + my_stats.n_descartados_m, my_stats.n_descartados_m, my_stats.n_descartados_f);
+    printf("---------------------------------------------------------------------\n");
 
-    close(saved_stdout);*/
-    printf("N Pedidos: %d em que %d sao masculinos e %d sao femininos\n",my_stats.n_pedidos_f+my_stats.n_pedidos_m,my_stats.n_pedidos_m,my_stats.n_pedidos_f);
-    printf("N Rejeitados: %d em que %d sao masculinos e %d sao femininos\n",my_stats.n_rejeitados_f+my_stats.n_rejeitados_m,my_stats.n_rejeitados_m,my_stats.n_rejeitados_f);
-    printf("N Descartados: %d em que %d sao masculinos e %d sao femininos\n",my_stats.n_descartados_f+my_stats.n_descartados_m,my_stats.n_descartados_m,my_stats.n_descartados_f);
     if (unlink("/tmp/entrada") < 0)
     {
-        //printf("Error when destroying FIFO /tmp/entrada\n");
+        printf("Error when destroying FIFO /tmp/entrada\n");
         return -1;
     }
     if (unlink("/tmp/rejeitados") < 0)
     {
-        //printf("Error when destroying FIFO /tmp/entrada\n");
+        printf("Error when destroying FIFO /tmp/entrada\n");
         return -1;
     }
 
-    // else printf("Entrada fifo destryed succesfully\n");
     return 0;
 }

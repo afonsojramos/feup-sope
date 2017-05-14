@@ -252,7 +252,8 @@ int main(int argc, char *argv[])
     read(fifo_entrada, &n_le, sizeof(n_le));
 
     //Main Loop
-    response_ticket(pid);
+    if (response_ticket(pid) < 0)
+        return -1;
 
     //Left
     close(fifo_rejeitado);

@@ -1,0 +1,9 @@
+>Comando de Invocacão: "./sauna <NumeroDeLugares>" - EX: ./sauna 500;
+	Significa que a sauna só irá suportar no maximo 500 clientes ao mesmo tempo;
+
+>Informação da Saida Padrão: STDOUT_FILENO 
+	No terminal sera mostrado todas as mensagens de erros (ou avisos!), tudo o que e escrito nos ficheiro de log, e as
+		estatisticas finais do programa (numero de pedidos maximos,...)
+
+>Registo: /tmp/bal.pid (em que pid e o identificador do programa)
+	E guardado no ficheiro o log de mensagens do programa,quando e recebido um pedido , rejeitado e descartado		

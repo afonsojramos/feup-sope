@@ -1,0 +1,10 @@
+>Comando de Invocação: "./gerador <NumerodePedidos> <TempoMaximoUtilizacao>" - EX: ./gerador 5000 50000;
+	Significa que o gerador vai aleatóriamente criar 5000 pedidos de entrada na sauna, com que cada pedido pode 
+		conter no maximo 50000 milisegundos de uso na sauna.
+		
+>Informação da Saida Padrão: STDOUT_FILENO 
+	No terminal sera mostrado todas as mensagens de erros (ou avisos!), tudo o que e escrito nos ficheiro de log, e as
+		estatisticas finais do programa (numero de pedidos maximos,...)
+
+>Registo: /tmp/ger.pid (em que pid e o identificador do programa)
+	E guardado no ficheiro o log de mensagens do programa,quando e recebido um pedido , rejeitado e descartado
